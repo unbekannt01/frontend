@@ -1,0 +1,5 @@
+/* Remove all existing styles and just keep these basic ones */
+.App {
+  width: 100%;
+  min-height: 100vh;
+}
