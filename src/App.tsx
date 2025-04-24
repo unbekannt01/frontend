@@ -5,7 +5,7 @@ import Register from "./components/Register";
 import VerifyOtp from "./components/VerifyOtp";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
-// import Dashboard from "./components/Dashboard";
+import AdminPage from "./components/AdminPage";
 
 // Helper function to check auth status
 const isAuthenticated = () => {
@@ -22,6 +22,7 @@ function App() {
         <Route path="/register" element={!isAuthenticated() ? <Register /> : <Navigate to="/dashboard" />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/dashboard" element={<Dashboard/>}/>
+        <Route path="/admin" element={<AdminPage />} />
       </Routes>
     </div>
   );

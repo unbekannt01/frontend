@@ -32,9 +32,16 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Store refresh token only, access token is in cookie
+        // Store refresh token and role
         localStorage.setItem('refresh_token', data.refresh_token);
-        setTimeout(() => navigate('/dashboard'), 2000);
+        if (data.role) {
+          localStorage.setItem('role', data.role);
+        }
+        if (data.role === "ADMIN") {
+          setTimeout(() => navigate('/admin'), 2000);
+        } else {
+          setTimeout(() => navigate('/dashboard'), 2000);
+        }
         // window.location.href = '/dashboard'; // Force reload to ensure cookie is set
       } else {
         setMessage(data.message || "Login failed");

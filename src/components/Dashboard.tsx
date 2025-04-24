@@ -1,8 +1,17 @@
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
+import { useEffect } from "react";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if user role is ADMIN (replace with your actual logic)
+    const role = localStorage.getItem("role");
+    if (role === "ADMIN") {
+      navigate("/admin");
+    }
+  }, [navigate]);
 
   const handleLogout = async () => {
     try {
