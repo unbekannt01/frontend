@@ -19,7 +19,7 @@ const VerifyOtp = () => {
     }
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3000/auth/verify-otp", {
+      const response = await fetch("http://localhost:3000/otp/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ otp, email }),
@@ -43,7 +43,7 @@ const VerifyOtp = () => {
     if (!email) return;
     setResendLoading(true);
     try {
-      const response = await fetch("http://localhost:3000/auth/resend-otp", {
+      const response = await fetch("http://localhost:3000/otp/resend-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

@@ -1,12 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { useEffect } from "react";
+import api from "../api";
 
 const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user role is ADMIN (replace with your actual logic)
     const role = localStorage.getItem("role");
     if (role === "ADMIN") {
       navigate("/admin");
@@ -15,20 +15,27 @@ const Dashboard = () => {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('http://localhost:3000/auth/logout', {
-        method: 'POST',
-        credentials: 'include'
-      });
-
-      if (response.ok) {
+      const refresh_token = localStorage.getItem('refresh_token');
+      
+      // Refresh access_token BEFORE logout
+      if (refresh_token) {
+        await api.post('/auth/refresh-token', { refresh_token });
+      }
+  
+      // Now logout
+      const response = await api.post('/auth/logout');
+  
+      if (response.status === 200) {
+        localStorage.clear();
         navigate('/login');
       }
     } catch (error) {
       console.error('Logout failed:', error);
+      localStorage.clear();
       navigate('/login');
     }
   };
-
+  
   return (
     <StyledDashboard>
       <NavBar>

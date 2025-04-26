@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
+import api from '../api'
 
 interface LoginForm {
   email: string;
@@ -20,34 +21,26 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3000/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Important for receiving access_token cookie
-        body: JSON.stringify(form)
-      });
+      const response = await api.post('/auth/login', form); // 👈 changed from fetch
 
-      const data = await response.json();
-
-      if (response.ok) {
-        // Store refresh token and role
-        localStorage.setItem('refresh_token', data.refresh_token);
-        if (data.role) {
-          localStorage.setItem('role', data.role);
-        }
-        if (data.role === "ADMIN") {
-          setTimeout(() => navigate('/admin'), 2000);
-        } else {
-          setTimeout(() => navigate('/dashboard'), 2000);
-        }
-        // window.location.href = '/dashboard'; // Force reload to ensure cookie is set
-      } else {
-        setMessage(data.message || "Login failed");
+      // Store refresh token and role
+      localStorage.setItem('refresh_token', response.data.refresh_token);
+      if (response.data.role) {
+        localStorage.setItem('role', response.data.role);
       }
-    } catch {
-      setMessage("Server error occurred");
+
+      if (response.data.role === "ADMIN") {
+        setTimeout(() => navigate('/admin'), 2000);
+      } else {
+        setTimeout(() => navigate('/dashboard'), 2000);
+      }
+    } catch (error: unknown) {
+      if (error instanceof Error && (error as { response?: { data?: { message?: string } } })?.response?.data?.message) {
+        const errorMsg = (error as { response?: { data?: { message?: string } } }).response?.data?.message || "An unknown error occurred";
+        setMessage(errorMsg);
+      } else {
+        setMessage("Login failed");
+      }
     }
     setLoading(false);
   };
