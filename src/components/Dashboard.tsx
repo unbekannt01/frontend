@@ -1,53 +1,89 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
-import { useEffect } from "react";
 import api from "../api";
+import axios from "axios";
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  first_name: string;
+  last_name: string;
+  userName: string;
+  mobile_no: string;
+  age: number;
+}
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const role = localStorage.getItem("role");
-    if (role === "ADMIN") {
-      navigate("/admin");
-    }
+    const fetchUser = async () => {
+      try {
+        const response = await api.get("/user/user");
+        setUser(response.data);
+      } catch (error) {
+        console.error("Unauthorized or session expired:", error);
+        localStorage.clear();
+        navigate("/login");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
   }, [navigate]);
 
   const handleLogout = async () => {
     try {
-      const refresh_token = localStorage.getItem('refresh_token');
-      
-      // Refresh access_token BEFORE logout
-      if (refresh_token) {
-        await api.post('/auth/refresh-token', { refresh_token });
-      }
-  
-      // Now logout
-      const response = await api.post('/auth/logout');
-  
-      if (response.status === 200) {
-        localStorage.clear();
-        navigate('/login');
-      }
+      const response = await axios.post(
+        "http://localhost:3000/auth/logout",
+        {},
+        {
+          withCredentials: true,
+        }
+      );
+
+      console.log("Logout successful", response.data);
+
+      // 1. Remove refresh_token from localStorage
+      localStorage.removeItem("refresh_token");
+
+      // 2. Redirect to homepage
+      navigate("/"); // or navigate('/login') if you want
     } catch (error) {
-      console.error('Logout failed:', error);
-      localStorage.clear();
-      navigate('/login');
+      console.error("Logout failed:", error);
     }
   };
-  
+
+  if (loading) {
+    return <LoadingScreen>Loading Dashboard...</LoadingScreen>;
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <StyledDashboard>
       <NavBar>
+        <UserInfo>
+          {user.first_name} {user.last_name} ({user.role})
+        </UserInfo>
         <LogoutButton onClick={handleLogout}>Logout</LogoutButton>
       </NavBar>
       <Content>
-        <QuoteCard>
-          <Quote>
-            "Security is not about convenience. It's about protecting what matters most - your digital identity."
-          </Quote>
-          <Author>- Authentication Principle</Author>
-        </QuoteCard>
+        <WelcomeCard>
+          <h1>Welcome, {user.first_name} 👋</h1>
+          <p>Email: {user.email}</p>
+          <p>Username: {user.userName}</p>
+          <p>Mobile: {user.mobile_no}</p>
+          <p>Age: {user.age}</p>
+        </WelcomeCard>
       </Content>
     </StyledDashboard>
   );
@@ -60,10 +96,16 @@ const StyledDashboard = styled.div`
 
 const NavBar = styled.nav`
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 1rem 2rem;
   background: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  align-items: center;
+`;
+
+const UserInfo = styled.div`
+  font-weight: bold;
+  color: #333;
 `;
 
 const LogoutButton = styled.button`
@@ -90,26 +132,30 @@ const Content = styled.main`
   padding: 2rem;
 `;
 
-const QuoteCard = styled.div`
+const WelcomeCard = styled.div`
   background: white;
   padding: 3rem;
   border-radius: 15px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   text-align: center;
   max-width: 600px;
+
+  h1 {
+    margin-bottom: 1.5rem;
+  }
+
+  p {
+    color: #666;
+    margin-bottom: 0.5rem;
+  }
 `;
 
-const Quote = styled.p`
-  color: #333;
-  font-size: 1.5rem;
-  line-height: 1.6;
-  font-style: italic;
-  margin-bottom: 1.5rem;
-`;
-
-const Author = styled.p`
-  color: #666;
-  font-size: 1rem;
+const LoadingScreen = styled.div`
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.2rem;
 `;
 
 export default Dashboard;
