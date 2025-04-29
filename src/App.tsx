@@ -34,7 +34,7 @@ function App() {
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/admin" element={<AdminPage />} />
-        <Route path="/admin/suspend/:id" element={<SuspendUserPage />} />
+        <Route path="/suspend/:id" element={<SuspendUserPage />} />
       </Routes>
     </div>
   );

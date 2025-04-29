@@ -17,7 +17,7 @@ interface User {
   deletedAt: Date | null;
   birth_date: Date | null;
   refresh_token: string;
-  expiryDate_token : Date | null;
+  expiryDate_token: Date | null;
   is_logged_in: boolean;
   is_Verified: boolean;
   loginAttempts: number;
@@ -26,10 +26,17 @@ interface User {
   suspensionReason: string | null;
 }
 
+type SortOrder = "asc" | "desc";
+
 const AdminPage = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortKey, setSortKey] = useState<keyof User | null>(null);
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -43,11 +50,11 @@ const AdminPage = () => {
 
         const data = response.data;
         if (Array.isArray(data.users)) {
-          // Exclude admin from the user list
-          const filteredUsers = data.users.filter(
+          const nonAdmins = data.users.filter(
             (user: User) => user.role !== "admin"
           );
-          setUsers(filteredUsers);
+          setUsers(nonAdmins);
+          setFilteredUsers(nonAdmins);
         } else {
           console.error("Invalid users format:", data);
           setUsers([]);
@@ -63,6 +70,43 @@ const AdminPage = () => {
     fetchUsers();
   }, []);
 
+  useEffect(() => {
+    let tempUsers = [...users];
+
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      tempUsers = tempUsers.filter(
+        (user) =>
+          user.email.toLowerCase().includes(lower) ||
+          user.userName.toLowerCase().includes(lower)
+      );
+    }
+
+    if (statusFilter !== "all") {
+      tempUsers = tempUsers.filter((user) => user.status === statusFilter);
+    }
+
+    if (sortKey) {
+      tempUsers.sort((a, b) => {
+        const aVal = a[sortKey];
+        const bVal = b[sortKey];
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
+        if (typeof aVal === "string" && typeof bVal === "string") {
+          return sortOrder === "asc"
+            ? aVal.localeCompare(bVal)
+            : bVal.localeCompare(aVal);
+        }
+        if (typeof aVal === "number" && typeof bVal === "number") {
+          return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+        }
+        return 0;
+      });
+    }
+
+    setFilteredUsers(tempUsers);
+  }, [searchTerm, statusFilter, sortKey, sortOrder, users]);
+
   const handleLogout = async () => {
     try {
       await axios.post(
@@ -77,19 +121,31 @@ const AdminPage = () => {
     }
   };
 
-  const suspendUser = async (id: string) => {
-    try {
-      const response = await axios.patch(
-        `http://localhost:3000/auth/suspend/${id}`,
-        { reason: "Violation of terms" },
-        { withCredentials: true }
-      );
-      alert(response.data.message);
-      updateUserInState(id, "SUSPENDED", null);
-    } catch (error) {
-      console.error("Suspend failed:", error);
-    }
+  const updateUserInState = (
+    id: string,
+    newStatus: string,
+    deletedAt: Date | null
+  ) => {
+    setUsers((prev) =>
+      prev.map((user) =>
+        user.id === id ? { ...user, status: newStatus, deletedAt } : user
+      )
+    );
   };
+
+  // const suspendUser = async (id: string) => {
+  //   try {
+  //     const response = await axios.post(
+  //       `http://localhost:3000/auth/suspendUser/${id}`,
+  //       {},
+  //       { withCredentials: true }
+  //     );
+  //     alert(response.data.message);
+  //     updateUserInState(id, "SUSPENDED", new Date());
+  //   } catch (error) {
+  //     console.error("Suspend failed:", error);
+  //   }
+  // };
 
   const reactivateUser = async (id: string) => {
     try {
@@ -121,7 +177,7 @@ const AdminPage = () => {
 
   const unblockUser = async (id: string) => {
     try {
-      const response = await axios.post(
+      const response = await axios.patch(
         `http://localhost:3000/auth/unblock/${id}`,
         {},
         { withCredentials: true }
@@ -153,22 +209,19 @@ const AdminPage = () => {
         { withCredentials: true }
       );
       alert(response.data.message);
-      setUsers(users.filter((user) => user.id !== id));
+      setUsers((prev) => prev.filter((user) => user.id !== id));
     } catch (error) {
       console.error("Hard delete failed:", error);
     }
   };
 
-  const updateUserInState = (
-    id: string,
-    newStatus: string,
-    deletedAt: Date | null
-  ) => {
-    setUsers(
-      users.map((user) =>
-        user.id === id ? { ...user, status: newStatus, deletedAt } : user
-      )
-    );
+  const handleSort = (key: keyof User) => {
+    if (sortKey === key) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortOrder("asc");
+    }
   };
 
   return (
@@ -178,119 +231,145 @@ const AdminPage = () => {
         <LogoutButton onClick={handleLogout}>Logout</LogoutButton>
       </NavBar>
       <Content>
+        <Controls>
+          <input
+            type="text"
+            placeholder="Search by username or email"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">All Statuses</option>
+            <option value="ACTIVE">Active</option>
+            <option value="SUSPENDED">Suspended</option>
+            <option value="INACTIVE">Inactive</option>
+          </select>
+        </Controls>
+
         {loading ? (
           <LoadingMessage>Loading user data...</LoadingMessage>
         ) : (
-          <UserTable>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Role</th>
-                <th>Username</th>
-                <th>First Name</th>
-                <th>Last Name</th>
-                <th>Birth Date</th>
-                <th>Mobile No</th>
-                <th>Email</th>
-                <th>Status</th>
-                <th>Refresh Token</th>
-                <th>Token Expiry</th>
-                <th>Age</th>
-                <th>Is Logged In</th>
-                <th>Is Verified</th>
-                <th>Login Attempts</th>
-                <th>Created At</th>
-                <th>Updated At</th>
-                <th>Is Blocked</th>
-                <th>Suspension Reason</th>
-                <th>Deleted At</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.length > 0 ? (
-                users.map((user) => (
-                  <tr key={user.id}>
-                    <td>{user.id}</td>
-                    <td>{user.role}</td>
-                    <td>{user.userName}</td>
-                    <td>{user.first_name}</td>
-                    <td>{user.last_name}</td>
-                    <td>
-                      {user.birth_date
-                        ? new Date(user.birth_date).toLocaleDateString()
-                        : "N/A"}
-                    </td>
-                    <td>{user.mobile_no}</td>
-                    <td>{user.email}</td>
-                    <td>{user.status}</td>
-                    <td>{user.refresh_token ?? "N/A"}</td>
-                    <td>
-                      {user.expiryDate_token
-                        ? new Date(user.expiryDate_token).toLocaleString()
-                        : "N/A"}
-                    </td>
-                    <td>{user.age}</td>
-                    <td>{user.is_logged_in ? "Yes" : "No"}</td>
-                    <td>{user.is_Verified ? "Yes" : "No"}</td>
-                    <td>{user.loginAttempts}</td>
-                    <td>{new Date(user.createdAt).toLocaleString()}</td>
-                    <td>{new Date(user.updatedAt).toLocaleString()}</td>
-                    <td>{user.isBlocked ? "Yes" : "No"}</td>
-                    <td>{user.suspensionReason ?? "N/A"}</td>
-                    <td>
-                      {user.deletedAt
-                        ? new Date(user.deletedAt).toLocaleString()
-                        : "N/A"}
-                    </td>
-                    <td>
-                      {user.isBlocked && (
-                        <Button onClick={() => unblockUser(user.id)}>
-                          Unblock
-                        </Button>
-                      )}
-                      {!user.isBlocked && user.status === "SUSPENDED" && (
-                        <Button onClick={() => reactivateUser(user.id)}>
-                          Reactivate
-                        </Button>
-                      )}
-                      {!user.isBlocked &&
-                        user.status !== "SUSPENDED" &&
-                        !user.deletedAt && (
-                          <Button onClick={() => suspendUser(user.id)}>
-                            Suspend
+          <TableWrapper>
+            <UserTable>
+              <thead>
+                <tr>
+                  <th onClick={() => handleSort("id")}>ID</th>
+                  <th>Role</th>
+                  <th onClick={() => handleSort("userName")}>Username</th>
+                  <th>Name</th>
+                  <th>DOB</th>
+                  <th>Mobile</th>
+                  <th onClick={() => handleSort("email")}>Email</th>
+                  <th>Status</th>
+                  <th>Refresh Token</th>
+                  <th>Token Expiry</th>
+                  <th>Age</th>
+                  <th>Logged In</th>
+                  <th>Verified</th>
+                  <th>Attempts</th>
+                  <th>Created</th>
+                  <th>Updated</th>
+                  <th>Blocked</th>
+                  <th>Suspension Reason</th>
+                  <th>Deleted</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map((user) => (
+                    <tr key={user.id}>
+                      <td>{user.id}</td>
+                      <td>{user.role}</td>
+                      <td>{user.userName}</td>
+                      <td>
+                        {user.first_name} {user.last_name}
+                      </td>
+                      <td>
+                        {user.birth_date
+                          ? new Date(user.birth_date).toLocaleDateString()
+                          : "N/A"}
+                      </td>
+                      <td>{user.mobile_no}</td>
+                      <td>{user.email}</td>
+                      <td>{user.status}</td>
+                      <td>
+                        {user.refresh_token
+                          ? `${user.refresh_token.slice(0, 10)}...`
+                          : "N/A"}
+                      </td>
+                      <td>
+                        {user.expiryDate_token
+                          ? new Date(user.expiryDate_token).toLocaleString()
+                          : "N/A"}
+                      </td>
+                      <td>{user.age}</td>
+                      <td>{user.is_logged_in ? "Yes" : "No"}</td>
+                      <td>{user.is_Verified ? "Yes" : "No"}</td>
+                      <td>{user.loginAttempts}</td>
+                      <td>{new Date(user.createdAt).toLocaleString()}</td>
+                      <td>{new Date(user.updatedAt).toLocaleString()}</td>
+                      <td>{user.isBlocked ? "Yes" : "No"}</td>
+                      <td>{user.suspensionReason ?? "N/A"}</td>
+                      <td>
+                        {user.deletedAt
+                          ? new Date(user.deletedAt).toLocaleString()
+                          : "N/A"}
+                      </td>
+                      <td>
+                        {user.isBlocked && (
+                          <Button onClick={() => unblockUser(user.id)}>
+                            Unblock
                           </Button>
                         )}
-                      {user.deletedAt === null && (
-                        <Button onClick={() => softDeleteUser(user.id)}>
-                          Soft Delete
+                        {!user.isBlocked && user.status === "SUSPENDED" && (
+                          <Button onClick={() => reactivateUser(user.id)}>
+                            Reactivate
+                          </Button>
+                        )}
+                        {!user.isBlocked &&
+                          user.status !== "SUSPENDED" &&
+                          !user.deletedAt && (
+                            <Button onClick={() => navigate(`/suspend/${user.id}`)}>
+                              Suspend
+                            </Button>
+                          )}
+                        {!user.isBlocked &&
+                          user.status !== "SUSPENDED" &&
+                          !user.deletedAt && (
+                            <Button onClick={() => softDeleteUser(user.id)}>
+                              Soft Delete
+                            </Button>
+                          )}
+                        {user.deletedAt && (
+                          <Button onClick={() => restoreUser(user.id)}>
+                            Restore
+                          </Button>
+                        )}
+                        <Button onClick={() => hardDeleteUser(user.id)}>
+                          Hard Delete
                         </Button>
-                      )}
-                      {user.deletedAt !== null && (
-                        <Button onClick={() => restoreUser(user.id)}>
-                          Restore
-                        </Button>
-                      )}
-                      <Button onClick={() => hardDeleteUser(user.id)}>
-                        Hard Delete
-                      </Button>
-                    </td>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={10}>No data found.</td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={21}>No users found.</td>
-                </tr>
-              )}
-            </tbody>
-          </UserTable>
+                )}
+              </tbody>
+            </UserTable>
+          </TableWrapper>
         )}
       </Content>
     </StyledAdminPage>
   );
 };
 
-// Styled Components (unchanged)
+// Styled Components
 const StyledAdminPage = styled.div`
   min-height: 100vh;
   background: #f5f7fa;
@@ -302,7 +381,6 @@ const NavBar = styled.nav`
   padding: 1rem 2rem;
   background: white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  align-items: center;
 `;
 
 const UserInfo = styled.div`
@@ -327,12 +405,22 @@ const LogoutButton = styled.button`
 `;
 
 const Content = styled.main`
+  padding: 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  min-height: calc(100vh - 70px);
+`;
+
+const Controls = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+
+  input,
+  select {
+    padding: 0.5rem;
+    font-size: 1rem;
+  }
 `;
 
 const LoadingMessage = styled.div`
@@ -340,35 +428,53 @@ const LoadingMessage = styled.div`
   color: #333;
 `;
 
+const TableWrapper = styled.div`
+  width: 100%;
+  overflow-x: auto;
+`;
+
 const UserTable = styled.table`
   width: 100%;
   border-collapse: collapse;
   margin-top: 2rem;
-  text-align: left;
+  font-size: 0.95rem;
 
   th,
   td {
-    padding: 1rem;
+    padding: 0.75rem 1rem;
     border: 1px solid #ddd;
+    text-align: left;
+    vertical-align: top;
+    cursor: default;
   }
 
   th {
     background-color: #f5f7fa;
+    cursor: pointer;
   }
 
   tr:hover {
     background-color: #f1f1f1;
   }
+
+  @media (max-width: 768px) {
+    font-size: 0.85rem;
+    th,
+    td {
+      padding: 0.5rem;
+    }
+  }
 `;
 
 const Button = styled.button`
-  padding: 0.5rem 1rem;
+  padding: 0.4rem 0.75rem;
   border: none;
   background: #764ba2;
   color: white;
   border-radius: 4px;
   cursor: pointer;
-  margin-right: 0.5rem;
+  margin: 0.25rem;
+  font-size: 0.75rem;
   transition: background 0.3s;
 
   &:hover {
