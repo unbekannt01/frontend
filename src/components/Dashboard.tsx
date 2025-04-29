@@ -25,6 +25,10 @@ const Dashboard = () => {
     const fetchUser = async () => {
       try {
         const response = await api.get("/user/user");
+        // Redirect if the user is an admin
+        if (response.data.role === "ADMIN") {
+          navigate("/admin");
+        }
         setUser(response.data);
       } catch (error) {
         console.error("Unauthorized or session expired:", error);

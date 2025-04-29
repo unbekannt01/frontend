@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
-import api from '../api'
+import api from "../api";
+import axios from "axios";
 
 interface LoginForm {
   email: string;
@@ -14,35 +15,60 @@ const Login = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState<LoginForm>({
     email: "",
-    password: ""
+    password: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await api.post('/auth/login', form);
+      const response = await api.post("/auth/login", form);
 
-      localStorage.setItem('refresh_token', response.data.refresh_token);
+      // Handle response for successful login
+      localStorage.setItem("refresh_token", response.data.refresh_token);
       if (response.data.role) {
-        localStorage.setItem('role', response.data.role);
+        localStorage.setItem("role", response.data.role);
       }
 
       setMessage("Login successful!");
 
+      // Redirect based on user role
       setTimeout(() => {
         if (response.data.role === "ADMIN") {
-          navigate('/admin');
+          navigate("/admin");
         } else {
-          navigate('/dashboard');
+          navigate("/dashboard");
         }
       }, 1000);
-      
-    } catch (error: Error | unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Login failed. Please try again.";
-      setMessage(errorMessage);
+    } catch (error: unknown) {
+      setLoading(false);
+
+      // Narrow down the error type
+      if (axios.isAxiosError(error)) {
+        // Axios error handling (e.g., bad status code, or no response)
+        if (error.response) {
+          const responseMessage = error.response.data.message;
+          if (
+            responseMessage ===
+            "Your account is blocked due to multiple failed login attempts."
+          ) {
+            setMessage(
+              "Your account is blocked due to too many failed login attempts."
+            );
+          } else { 
+            setMessage(responseMessage || "Login failed. Please try again.");
+          }
+        } else {
+          setMessage("Network error. Please try again.");
+        }
+      } else if (error instanceof Error) {
+        // Generic error handling if it's a non-Axios error
+        setMessage(error.message || "An unexpected error occurred.");
+      } else {
+        // If it's some other unknown error type
+        setMessage("An unexpected error occurred. Please try again.");
+      }
     }
-    setLoading(false);
   };
 
   return (
@@ -68,7 +94,9 @@ const Login = () => {
             {loading ? "Logging in..." : "Login"}
           </Button>
         </form>
-        {message && <Message error={message.includes('failed')}>{message}</Message>}
+        {message && (
+          <Message error={message.includes("failed")}>{message}</Message>
+        )}
       </FormCard>
     </StyledContainer>
   );
@@ -108,14 +136,14 @@ const Button = styled.button`
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  
+
   &:disabled {
     background-color: #cccccc;
   }
 `;
 
 const Message = styled.div<{ error?: boolean }>`
-  color: ${props => props.error ? '#dc3545' : '#28a745'};
+  color: ${(props) => (props.error ? "#dc3545" : "#28a745")};
   text-align: center;
   margin-top: 1rem;
 `;
