@@ -165,7 +165,6 @@ const AdminPage = () => {
           withCredentials: true,
         }
       );
-      alert("User suspended successfully.");
       updateUserInState(selectedUser.id, "SUSPENDED", null, suspendMessage);
       closeSuspendModal();
     } catch (error) {
@@ -177,12 +176,11 @@ const AdminPage = () => {
 
   const reactivateUser = async (id: string) => {
     try {
-      const response = await axios.patch(
+      await axios.patch(
         `http://localhost:3000/auth/reActivated/${id}`,
         {},
         { withCredentials: true }
       );
-      alert(response.data.message);
       updateUserInState(id, "ACTIVE", null);
     } catch (error) {
       console.error("Reactivation failed:", error);
@@ -191,12 +189,11 @@ const AdminPage = () => {
 
   const restoreUser = async (id: string) => {
     try {
-      const response = await axios.patch(
+      await axios.patch(
         `http://localhost:3000/auth/restore/${id}`,
         {},
         { withCredentials: true }
       );
-      alert(response.data.message);
       updateUserInState(id, "ACTIVE", null);
     } catch (error) {
       console.error("Restore failed:", error);
@@ -205,12 +202,11 @@ const AdminPage = () => {
 
   const unblockUser = async (id: string) => {
     try {
-      const response = await axios.patch(
+      await axios.patch(
         `http://localhost:3000/auth/unblock/${id}`,
         {},
         { withCredentials: true }
       );
-      alert(response.data.message);
       updateUserInState(id, "ACTIVE", null);
     } catch (error) {
       console.error("Unblock failed:", error);
@@ -219,11 +215,9 @@ const AdminPage = () => {
 
   const softDeleteUser = async (id: string) => {
     try {
-      const response = await axios.delete(
-        `http://localhost:3000/auth/softDelete/${id}`,
-        { withCredentials: true }
-      );
-      alert(response.data.message);
+      await axios.delete(`http://localhost:3000/auth/softDelete/${id}`, {
+        withCredentials: true,
+      });
       updateUserInState(id, "INACTIVE", new Date());
     } catch (error) {
       console.error("Soft delete failed:", error);
@@ -232,11 +226,10 @@ const AdminPage = () => {
 
   const hardDeleteUser = async (id: string) => {
     try {
-      const response = await axios.delete(
-        `http://localhost:3000/auth/hardDelete/${id}`,
-        { withCredentials: true }
-      );
-      alert(response.data.message);
+      await axios.delete(`http://localhost:3000/auth/hardDelete/${id}`, {
+        withCredentials: true,
+      });
+      // alert(response.data.message);
       setUsers((prev) => prev.filter((user) => user.id !== id));
     } catch (error) {
       console.error("Hard delete failed:", error);
@@ -311,39 +304,49 @@ const AdminPage = () => {
                   filteredUsers.map((user) => (
                     <tr key={user.id}>
                       <td>
-                        {user.isBlocked && (
-                          <Button onClick={() => unblockUser(user.id)}>
-                            Unblock
-                          </Button>
-                        )}
-                        {!user.isBlocked && user.status === "SUSPENDED" && (
-                          <Button onClick={() => reactivateUser(user.id)}>
-                            Reactivate
-                          </Button>
-                        )}
-                        {!user.isBlocked &&
-                          user.status !== "SUSPENDED" &&
-                          !user.deletedAt && (
-                            <Button onClick={() => openSuspendModal(user)}>
-                              Suspend
-                            </Button>
-                          )}
-                        {!user.isBlocked &&
-                          user.status !== "SUSPENDED" &&
-                          !user.deletedAt && (
-                            <Button onClick={() => softDeleteUser(user.id)}>
-                              Soft Delete
-                            </Button>
-                          )}
-                        {user.deletedAt && (
+                        {user.deletedAt ? (
                           <Button onClick={() => restoreUser(user.id)}>
                             Restore
                           </Button>
+                        ) : user.isBlocked ? (
+                          <>
+                            <Button onClick={() => unblockUser(user.id)}>
+                              Unblock
+                            </Button>
+                            <Button onClick={() => softDeleteUser(user.id)}>
+                              Soft Delete
+                            </Button>
+                            <Button onClick={() => hardDeleteUser(user.id)}>
+                              Hard Delete
+                            </Button>
+                          </>
+                        ) : user.status === "SUSPENDED" ? (
+                          <>
+                            <Button onClick={() => reactivateUser(user.id)}>
+                              Reactivate
+                            </Button>
+                            <Button onClick={() => softDeleteUser(user.id)}>
+                              Soft Delete
+                            </Button>
+                            <Button onClick={() => hardDeleteUser(user.id)}>
+                              Hard Delete
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button onClick={() => openSuspendModal(user)}>
+                              Suspend
+                            </Button>
+                            <Button onClick={() => softDeleteUser(user.id)}>
+                              Soft Delete
+                            </Button>
+                            <Button onClick={() => hardDeleteUser(user.id)}>
+                              Hard Delete
+                            </Button>
+                          </>
                         )}
-                        <Button onClick={() => hardDeleteUser(user.id)}>
-                          Hard Delete
-                        </Button>
                       </td>
+
                       <td>{user.id}</td>
                       <td>{user.role}</td>
                       <td>{user.userName}</td>
