@@ -37,6 +37,10 @@ const AdminPage = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortKey, setSortKey] = useState<keyof User | null>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [suspendMessage, setSuspendMessage] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -124,28 +128,52 @@ const AdminPage = () => {
   const updateUserInState = (
     id: string,
     newStatus: string,
-    deletedAt: Date | null
+    deletedAt: Date | null,
+    suspensionReason: string | null = null
   ) => {
     setUsers((prev) =>
       prev.map((user) =>
-        user.id === id ? { ...user, status: newStatus, deletedAt } : user
+        user.id === id
+          ? { ...user, status: newStatus, deletedAt, suspensionReason }
+          : user
       )
     );
   };
 
-  // const suspendUser = async (id: string) => {
-  //   try {
-  //     const response = await axios.post(
-  //       `http://localhost:3000/auth/suspendUser/${id}`,
-  //       {},
-  //       { withCredentials: true }
-  //     );
-  //     alert(response.data.message);
-  //     updateUserInState(id, "SUSPENDED", new Date());
-  //   } catch (error) {
-  //     console.error("Suspend failed:", error);
-  //   }
-  // };
+  const openSuspendModal = async (user: User) => {
+    setSelectedUser(user);
+    setSuspendMessage("");
+    setIsModalOpen(true);
+    setModalLoading(false);
+  };
+
+  const closeSuspendModal = () => {
+    setIsModalOpen(false);
+    setSelectedUser(null);
+    setSuspendMessage("");
+  };
+
+  const handleSuspend = async () => {
+    if (!selectedUser) return;
+    setModalLoading(true);
+    try {
+      await axios.patch(
+        `http://localhost:3000/auth/suspend/${selectedUser.id}`,
+        { message: suspendMessage },
+        {
+          headers: { "Content-Type": "application/json" },
+          withCredentials: true,
+        }
+      );
+      alert("User suspended successfully.");
+      updateUserInState(selectedUser.id, "SUSPENDED", null, suspendMessage);
+      closeSuspendModal();
+    } catch (error) {
+      console.error("Suspension failed", error);
+    } finally {
+      setModalLoading(false);
+    }
+  };
 
   const reactivateUser = async (id: string) => {
     try {
@@ -256,6 +284,7 @@ const AdminPage = () => {
             <UserTable>
               <thead>
                 <tr>
+                  <th>Actions</th>
                   <th onClick={() => handleSort("id")}>ID</th>
                   <th>Role</th>
                   <th onClick={() => handleSort("userName")}>Username</th>
@@ -275,13 +304,46 @@ const AdminPage = () => {
                   <th>Blocked</th>
                   <th>Suspension Reason</th>
                   <th>Deleted</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.length > 0 ? (
                   filteredUsers.map((user) => (
                     <tr key={user.id}>
+                      <td>
+                        {user.isBlocked && (
+                          <Button onClick={() => unblockUser(user.id)}>
+                            Unblock
+                          </Button>
+                        )}
+                        {!user.isBlocked && user.status === "SUSPENDED" && (
+                          <Button onClick={() => reactivateUser(user.id)}>
+                            Reactivate
+                          </Button>
+                        )}
+                        {!user.isBlocked &&
+                          user.status !== "SUSPENDED" &&
+                          !user.deletedAt && (
+                            <Button onClick={() => openSuspendModal(user)}>
+                              Suspend
+                            </Button>
+                          )}
+                        {!user.isBlocked &&
+                          user.status !== "SUSPENDED" &&
+                          !user.deletedAt && (
+                            <Button onClick={() => softDeleteUser(user.id)}>
+                              Soft Delete
+                            </Button>
+                          )}
+                        {user.deletedAt && (
+                          <Button onClick={() => restoreUser(user.id)}>
+                            Restore
+                          </Button>
+                        )}
+                        <Button onClick={() => hardDeleteUser(user.id)}>
+                          Hard Delete
+                        </Button>
+                      </td>
                       <td>{user.id}</td>
                       <td>{user.role}</td>
                       <td>{user.userName}</td>
@@ -319,45 +381,11 @@ const AdminPage = () => {
                           ? new Date(user.deletedAt).toLocaleString()
                           : "N/A"}
                       </td>
-                      <td>
-                        {user.isBlocked && (
-                          <Button onClick={() => unblockUser(user.id)}>
-                            Unblock
-                          </Button>
-                        )}
-                        {!user.isBlocked && user.status === "SUSPENDED" && (
-                          <Button onClick={() => reactivateUser(user.id)}>
-                            Reactivate
-                          </Button>
-                        )}
-                        {!user.isBlocked &&
-                          user.status !== "SUSPENDED" &&
-                          !user.deletedAt && (
-                            <Button onClick={() => navigate(`/suspend/${user.id}`)}>
-                              Suspend
-                            </Button>
-                          )}
-                        {!user.isBlocked &&
-                          user.status !== "SUSPENDED" &&
-                          !user.deletedAt && (
-                            <Button onClick={() => softDeleteUser(user.id)}>
-                              Soft Delete
-                            </Button>
-                          )}
-                        {user.deletedAt && (
-                          <Button onClick={() => restoreUser(user.id)}>
-                            Restore
-                          </Button>
-                        )}
-                        <Button onClick={() => hardDeleteUser(user.id)}>
-                          Hard Delete
-                        </Button>
-                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={10}>No data found.</td>
+                    <td colSpan={20}>No data found.</td>
                   </tr>
                 )}
               </tbody>
@@ -365,6 +393,49 @@ const AdminPage = () => {
           </TableWrapper>
         )}
       </Content>
+
+      {isModalOpen && selectedUser && (
+        <ModalOverlay>
+          <ModalContent>
+            <ModalNavBar>
+              <ModalTitle>Suspend User</ModalTitle>
+              <CloseButton onClick={closeSuspendModal}>Close</CloseButton>
+            </ModalNavBar>
+            <ModalFormWrapper>
+              {modalLoading ? (
+                <LoadingScreen>Loading...</LoadingScreen>
+              ) : (
+                <>
+                  <h2>Confirm Suspension</h2>
+                  <p>
+                    <strong>Name:</strong> {selectedUser.first_name}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {selectedUser.email}
+                  </p>
+                  <p>
+                    <strong>Status:</strong> {selectedUser.status}
+                  </p>
+                  <label htmlFor="reason">Reason for Suspension:</label>
+                  <TextArea
+                    id="reason"
+                    rows={4}
+                    value={suspendMessage}
+                    onChange={(e) => setSuspendMessage(e.target.value)}
+                    placeholder="Enter suspension reason"
+                  />
+                  <Button
+                    onClick={handleSuspend}
+                    disabled={!suspendMessage.trim() || modalLoading}
+                  >
+                    Confirm Suspend
+                  </Button>
+                </>
+              )}
+            </ModalFormWrapper>
+          </ModalContent>
+        </ModalOverlay>
+      )}
     </StyledAdminPage>
   );
 };
@@ -480,6 +551,101 @@ const Button = styled.button`
   &:hover {
     background: #6a3e92;
   }
+
+  &:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+`;
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background: #f5f7fa;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+`;
+
+const ModalNavBar = styled.nav`
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+`;
+
+const ModalTitle = styled.div`
+  font-weight: bold;
+  color: #333;
+`;
+
+const CloseButton = styled.button`
+  padding: 0.5rem 1.5rem;
+  border: 2px solid #764ba2;
+  border-radius: 8px;
+  background: transparent;
+  color: #764ba2;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: #764ba2;
+    color: white;
+  }
+`;
+
+const ModalFormWrapper = styled.div`
+  background: white;
+  padding: 2rem;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+
+  h2 {
+    margin-bottom: 1rem;
+  }
+
+  p {
+    margin: 0.5rem 0;
+  }
+
+  label {
+    font-weight: bold;
+    margin-top: 1rem;
+    display: block;
+  }
+`;
+
+const TextArea = styled.textarea`
+  width: 100%;
+  margin: 0.5rem 0 1.5rem;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.95rem;
+`;
+
+const LoadingScreen = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.2rem;
+  color: #555;
+  min-height: 200px;
 `;
 
 export default AdminPage;

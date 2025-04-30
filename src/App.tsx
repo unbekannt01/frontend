@@ -6,7 +6,6 @@ import VerifyOtp from "./components/VerifyOtp";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import AdminPage from "./components/AdminPage";
-import SuspendUserPage from "./components/SuspendUserPage";
 
 // Helper function to check auth status
 const isAuthenticated = () => {
@@ -34,7 +33,6 @@ function App() {
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/admin" element={<AdminPage />} />
-        <Route path="/suspend/:id" element={<SuspendUserPage />} />
       </Routes>
     </div>
   );
