@@ -2,6 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styled from "styled-components";
 import api from "../api";
+import { AxiosError } from "axios";
+
+interface ApiErrorResponse {
+  message?: string;
+}
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
@@ -21,33 +26,33 @@ const VerifyEmail = () => {
       }
 
       try {
-        const response = await api.get(`/auth/verify-email?token=${token}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
+        console.log("Verifying token:", token); // Debug token
+        const response = await api.post(`/auth/verify-email?token=${token}`); // Fix endpoint and request
+        const data = response.data;
 
-        console.log(`Response status: ${response.status}`);
-        const data = await response.data();
-        
-        if (response.data) {
+        if (response.status >= 200 && response.status < 300) {
           setMessage(data.message || "Email verified successfully! You can now log in.");
         } else {
-          console.log(`Error response: ${JSON.stringify(data)}`);
-          if (data.message?.includes("Invalid or expired verification token")) {
+          setMessage(data.message || "Verification failed");
+          setError(true);
+        }
+      } catch (err: unknown) {
+        console.error("Verification error:", err); // Debug error
+        if (err instanceof AxiosError && err.response?.data) {
+          const errorData = err.response.data as ApiErrorResponse;
+          if (errorData.message?.includes("Invalid or expired verification token")) {
             setMessage("Email may already be verified. Please proceed to login.");
           } else {
-            setMessage(data.message || "Verification failed");
-            setError(true);
+            setMessage(errorData.message || "Verification failed. Please try again.");
           }
+          setError(true);
+        } else {
+          setMessage("Failed to connect to the server. Please try again.");
+          setError(true);
         }
-      } catch (err) {
-        console.error("Fetch error:", err);
-        setMessage("Failed to connect to the server. Your email may already be verified. Please try logging in.");
-        setError(true);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     verifyEmail();
@@ -65,12 +70,8 @@ const VerifyEmail = () => {
           <Message>Loading...</Message>
         ) : (
           <>
-            <Message error={error}>
-              {message}
-            </Message>
-            <Button onClick={handleLoginRedirect}>
-              Go to Login
-            </Button>
+            <Message error={error}>{message}</Message>
+            <Button onClick={handleLoginRedirect}>Go to Login</Button>
           </>
         )}
       </VerifyCard>
@@ -78,6 +79,7 @@ const VerifyEmail = () => {
   );
 };
 
+// Styled components (unchanged)
 const StyledContainer = styled.div`
   min-height: 100vh;
   display: flex;
@@ -91,7 +93,7 @@ const VerifyCard = styled.div`
   background: white;
   padding: 2rem;
   border-radius: 15px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 500px;
   text-align: center;
@@ -106,7 +108,7 @@ const VerifyCard = styled.div`
 const Message = styled.p<{ error?: boolean }>`
   text-align: center;
   margin: 1rem 0;
-  color: ${props => props.error ? '#EF4444' : '#10B981'};
+  color: ${(props) => (props.error ? "#EF4444" : "#10B981")};
   font-size: 1rem;
 `;
 

@@ -2,6 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import api from "../api";
+import { AxiosError } from "axios";
+
+interface ApiErrorResponse {
+  message?: string;
+}
 
 const EmailVerificationPage = () => {
   const navigate = useNavigate();
@@ -19,21 +24,26 @@ const EmailVerificationPage = () => {
     setMessage("");
 
     try {
-      const response = await api.post("/auth/resend-verification", { email });
-      const data = response.data; // Access .data directly
+      console.log("Sending email:", email); // Debug payload
+      const response = await api.post("/auth/resend-verification", { email }); // Adjust to /auth/resend-verification if needed
+      const data = response.data;
 
       if (response.status >= 200 && response.status < 300) {
         setMessage("Verification email resent successfully! Check your inbox.");
       } else {
-        setMessage(data.message || "Failed to resend verification email");
+        setMessage(data.message || "Failed to resend verification email.");
       }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      console.error("Error resending verification email:", error);
-      setMessage(
-        error.response?.data?.message ||
-          "Failed to resend verification email. Please try again."
-      );
+    } catch (error: unknown) {
+      console.error("Error resending verification email:", error); // Debug error
+      if (error instanceof AxiosError && error.response?.data) {
+        const errorData = error.response.data as ApiErrorResponse;
+        setMessage(
+          errorData.message ||
+            "Failed to resend verification email. Your email may already be verified. Please try logging in."
+        );
+      } else {
+        setMessage("Failed to connect to the server. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -60,9 +70,7 @@ const EmailVerificationPage = () => {
           </Button>
         </form>
         {message && (
-          <Message success={message.includes("successfully")}>
-            {message}
-          </Message>
+          <Message success={message.includes("successfully")}>{message}</Message>
         )}
         <BackButton onClick={handleBackToLogin}>Back to Log In</BackButton>
       </FormCard>
@@ -70,7 +78,7 @@ const EmailVerificationPage = () => {
   );
 };
 
-// Styled components remain unchanged
+// Styled components (unchanged)
 const StyledContainer = styled.div`
   min-height: 100vh;
   display: flex;
