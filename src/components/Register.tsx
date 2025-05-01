@@ -1,6 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom"; // Re-enable for navigation
 import styled from "styled-components";
+import api from "../api";
+import { AxiosError } from "axios";
+
+// Define the expected error response shape
+interface ApiErrorResponse {
+  message?: string;
+}
 
 interface RegisterFormData {
   first_name: string;
@@ -13,7 +20,7 @@ interface RegisterFormData {
 }
 
 const Register = () => {
-  const navigate = useNavigate();
+  // const navigate = useNavigate(); // Re-enable for navigation
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [formData, setFormData] = useState<RegisterFormData>({
@@ -23,42 +30,43 @@ const Register = () => {
     email: "",
     password: "",
     mobile_no: "",
-    birth_date: ""
+    birth_date: "",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    try {
-      const response = await fetch('http://localhost:3000/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
-      });
+    setMessage("");
 
-      const data = await response.json();
-      
-      if (response.ok) {
-        setMessage("Registration successful! Redirecting to verification...");
-        setTimeout(() => navigate('/verify-otp', { 
-          state: { email: formData.email } 
-        }), 1500);
+    try {
+      const response = await api.post("/auth/register", formData); // Fix Axios request
+      const data = response.data;
+
+      if (response.status >= 200 && response.status < 300) {
+        setMessage("User registered successfully! A verification link has been sent to your email.");
+        // Optionally navigate to verification page
+        // navigate("/email-verification");
       } else {
         setMessage(data.message || "Registration failed");
       }
-    } catch {
-      setMessage("Server error occurred");
+    } catch (error: unknown) { // Use 'unknown' for TypeScript
+      console.error("Error registering user:", error);
+      if (error instanceof AxiosError && error.response?.data) {
+        const errorData = error.response.data as ApiErrorResponse;
+        setMessage(errorData.message || "Registration failed. Please try again.");
+      } else {
+        setMessage("Server error occurred. Please try again.");
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -128,15 +136,14 @@ const Register = () => {
           </Button>
         </form>
         {message && (
-          <Message success={message.includes("successful")}>
-            {message}
-          </Message>
+          <Message success={message.includes("successful")}>{message}</Message>
         )}
       </FormCard>
     </StyledContainer>
   );
 };
 
+// Styled components (unchanged)
 const StyledContainer = styled.div`
   min-height: 100vh;
   display: flex;
@@ -150,7 +157,7 @@ const FormCard = styled.div`
   background: white;
   padding: 2rem;
   border-radius: 15px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 500px;
 
@@ -185,13 +192,13 @@ const Input = styled.input`
   &:focus {
     outline: none;
     border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
   }
 `;
 
 const DateInput = styled(Input)`
   color: #666;
-  
+
   &::-webkit-calendar-picker-indicator {
     cursor: pointer;
     opacity: 0.6;
@@ -224,7 +231,7 @@ const Button = styled.button`
 const Message = styled.p<{ success?: boolean }>`
   text-align: center;
   margin-top: 1rem;
-  color: ${props => props.success ? '#10B981' : '#EF4444'};
+  color: ${(props) => (props.success ? "#10B981" : "#EF4444")};
   font-size: 0.9rem;
 `;
 

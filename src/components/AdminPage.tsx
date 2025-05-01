@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
-import axios from "axios";
+import api from "../api";
 
 interface User {
   id: string;
@@ -45,8 +45,8 @@ const AdminPage = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await axios.get(
-          "http://localhost:3000/auth/getAllUsers",
+        const response = await api.get(
+          "/auth/getAllUsers",
           {
             withCredentials: true,
           }
@@ -113,8 +113,8 @@ const AdminPage = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post(
-        "http://localhost:3000/auth/logout",
+      await api.post(
+        "/auth/logout",
         {},
         { withCredentials: true }
       );
@@ -157,8 +157,8 @@ const AdminPage = () => {
     if (!selectedUser) return;
     setModalLoading(true);
     try {
-      await axios.patch(
-        `http://localhost:3000/auth/suspend/${selectedUser.id}`,
+      await api.patch(
+        `/auth/suspend/${selectedUser.id}`,
         { message: suspendMessage },
         {
           headers: { "Content-Type": "application/json" },
@@ -176,8 +176,8 @@ const AdminPage = () => {
 
   const reactivateUser = async (id: string) => {
     try {
-      await axios.patch(
-        `http://localhost:3000/auth/reActivated/${id}`,
+      await api.patch(
+        `/auth/reActivated/${id}`,
         {},
         { withCredentials: true }
       );
@@ -189,8 +189,8 @@ const AdminPage = () => {
 
   const restoreUser = async (id: string) => {
     try {
-      await axios.patch(
-        `http://localhost:3000/auth/restore/${id}`,
+      await api.patch(
+        `/auth/restore/${id}`,
         {},
         { withCredentials: true }
       );
@@ -202,8 +202,8 @@ const AdminPage = () => {
 
   const unblockUser = async (id: string) => {
     try {
-      await axios.patch(
-        `http://localhost:3000/auth/unblock/${id}`,
+      await api.patch(
+        `/auth/unblock/${id}`,
         {},
         { withCredentials: true }
       );
@@ -215,7 +215,7 @@ const AdminPage = () => {
 
   const softDeleteUser = async (id: string) => {
     try {
-      await axios.delete(`http://localhost:3000/auth/softDelete/${id}`, {
+      await api.delete(`/auth/softDelete/${id}`, {
         withCredentials: true,
       });
       updateUserInState(id, "INACTIVE", new Date());
@@ -226,7 +226,7 @@ const AdminPage = () => {
 
   const hardDeleteUser = async (id: string) => {
     try {
-      await axios.delete(`http://localhost:3000/auth/hardDelete/${id}`, {
+      await api.delete(`/auth/hardDelete/${id}`, {
         withCredentials: true,
       });
       // alert(response.data.message);

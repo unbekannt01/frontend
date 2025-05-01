@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import styled from "styled-components";
+import api from "../api";
 
 const VerifyOtp = () => {
   const navigate = useNavigate();
@@ -19,15 +20,15 @@ const VerifyOtp = () => {
     }
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3000/otp/verify-otp", {
+      const response = await api.post("/otp/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ otp, email }),
       });
 
-      const data = await response.json();
+      const data = await response.data();
       
-      if (response.ok) {
+      if (response.data) {
         setMessage("Email verified successfully!");
         navigate("/login", { replace: true });
       } else {
@@ -43,13 +44,13 @@ const VerifyOtp = () => {
     if (!email) return;
     setResendLoading(true);
     try {
-      const response = await fetch("http://localhost:3000/otp/resend-otp", {
+      const response = await api.post("/otp/resend-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
 
-      const data = await response.json();
+      const data = await response.data();
       setMessage(data.message || "OTP resent successfully!");
     } catch {
       setMessage("Failed to resend OTP");

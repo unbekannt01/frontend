@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:3000',
+  baseURL: 'http://localhost:3001',
   withCredentials: true,
 });
 
@@ -15,7 +15,7 @@ api.interceptors.response.use(
       try {
         const refresh_token = localStorage.getItem('refresh_token');
         const res = await axios.post(
-          'http://localhost:3000/auth/refresh-token',
+          'http://localhost:3001/auth/refresh-token',
           { refresh_token },
           { withCredentials: true }
         );

@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import api from "../api";
-import axios from "axios";
 
 interface User {
   id: number;
@@ -44,8 +43,8 @@ const Dashboard = () => {
 
   const handleLogout = async () => {
     try {
-      const response = await axios.post(
-        "http://localhost:3000/auth/logout",
+      const response = await api.post(
+        "/auth/logout",
         {},
         {
           withCredentials: true,

@@ -2,150 +2,181 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import api from "../api";
-import axios from "axios";
 
-interface LoginForm {
+interface LoginFormData {
   email: string;
   password: string;
 }
 
 const Login = () => {
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
   const navigate = useNavigate();
-  const [form, setForm] = useState<LoginForm>({
+  const [loginFormData, setLoginFormData] = useState<LoginFormData>({
     email: "",
     password: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLoginFormData({
+      ...loginFormData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setMessage("");
     try {
-      const response = await api.post("/auth/login", form);
+      const response = await api.post("/auth/login", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(loginFormData),
+        credentials: 'include',
+      });
 
-      // Handle response for successful login
-      localStorage.setItem("refresh_token", response.data.refresh_token);
-      if (response.data.role) {
-        localStorage.setItem("role", response.data.role);
-      }
-
-      setMessage("Login successful!");
-
-      // Redirect based on user role
-      setTimeout(() => {
-        if (response.data.role === "ADMIN") {
-          navigate("/admin");
-        } else {
-          navigate("/dashboard");
-        }
-      }, 1000);
-    } catch (error: unknown) {
-      setLoading(false);
-
-      // Narrow down the error type
-      if (axios.isAxiosError(error)) {
-        // Axios error handling (e.g., bad status code, or no response)
-        if (error.response) {
-          const responseMessage = error.response.data.message;
-          if (
-            responseMessage ===
-            "Your account is blocked due to multiple failed login attempts."
-          ) {
-            setMessage(
-              "Your account is blocked due to too many failed login attempts."
-            );
-          } else { 
-            setMessage(responseMessage || "Login failed. Please try again.");
-          }
-        } else {
-          setMessage("Network error. Please try again.");
-        }
-      } else if (error instanceof Error) {
-        // Generic error handling if it's a non-Axios error
-        setMessage(error.message || "An unexpected error occurred.");
+      const data = await response.data();
+      if (response.data) {
+        localStorage.setItem("refresh_token", data.refresh_token); // Store refresh token
+        navigate("/dashboard");
       } else {
-        // If it's some other unknown error type
-        setMessage("An unexpected error occurred. Please try again.");
+        setMessage(data.message || "Login failed");
       }
+    } catch {
+      setMessage("Server error occurred");
     }
+    setLoading(false);
+  };
+
+  const handleResendRedirect = () => {
+    navigate("/email-verification");
   };
 
   return (
     <StyledContainer>
       <FormCard>
-        <h2>Welcome Back</h2>
-        <form onSubmit={handleSubmit}>
+        <h2>Log In</h2>
+        <form onSubmit={handleLoginSubmit}>
           <Input
             type="email"
+            name="email"
             placeholder="Email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            value={loginFormData.email}
+            onChange={handleLoginChange}
             required
           />
           <Input
             type="password"
+            name="password"
             placeholder="Password"
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            value={loginFormData.password}
+            onChange={handleLoginChange}
             required
           />
           <Button type="submit" disabled={loading}>
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "Logging In..." : "Log In"}
           </Button>
         </form>
         {message && (
-          <Message error={message.includes("failed")}>{message}</Message>
+          <Message success={false}>
+            {message}
+          </Message>
         )}
+        <ResendSection>
+          <h3>Missed the verification email?</h3>
+          <Button onClick={handleResendRedirect}>
+            Resend Verification Email
+          </Button>
+        </ResendSection>
       </FormCard>
     </StyledContainer>
   );
 };
 
 const StyledContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
   min-height: 100vh;
-  background-color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
 `;
 
 const FormCard = styled.div`
   background: white;
   padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 15px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
   width: 100%;
-  max-width: 400px;
+  max-width: 500px;
+
+  h2 {
+    color: #333;
+    text-align: center;
+    margin-bottom: 2rem;
+    font-size: 1.8rem;
+  }
 `;
 
 const Input = styled.input`
   width: 100%;
-  padding: 0.8rem;
-  margin: 0.5rem 0;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 1rem;
+  border: 2px solid #eef2ff;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+
+  &:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+  }
 `;
 
 const Button = styled.button`
   width: 100%;
-  padding: 0.8rem;
-  margin: 1rem 0;
-  background-color: #007bff;
+  padding: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: transform 0.3s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+  }
 
   &:disabled {
-    background-color: #cccccc;
+    opacity: 0.7;
+    cursor: not-allowed;
   }
 `;
 
-const Message = styled.div<{ error?: boolean }>`
-  color: ${(props) => (props.error ? "#dc3545" : "#28a745")};
+const Message = styled.p<{ success: boolean }>`
   text-align: center;
   margin-top: 1rem;
+  color: ${props => props.success ? '#10B981' : '#EF4444'};
+  font-size: 0.9rem;
+`;
+
+const ResendSection = styled.div`
+  margin-top: 2rem;
+  border-top: 1px solid #eef2ff;
+  padding-top: 1rem;
+  text-align: center;
+
+  h3 {
+    color: #333;
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+  }
 `;
 
 export default Login;
