@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import api from "../api";
+import { AxiosError } from "axios";
 
 interface LoginFormData {
   email: string;
@@ -28,29 +29,24 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
+  
     try {
-      const response = await api.post("/auth/login", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(loginFormData),
-        credentials: 'include',
-      });
-
-      const data = await response.data();
-      if (response.data) {
-        localStorage.setItem("refresh_token", data.refresh_token); // Store refresh token
+      const response = await api.post("/auth/login", loginFormData); // no headers or body
+      const data = response.data;
+  
+      if (data?.refresh_token) {
+        localStorage.setItem("refresh_token", data.refresh_token);
         navigate("/dashboard");
       } else {
-        setMessage(data.message || "Login failed");
+        setMessage("Login failed");
       }
-    } catch {
-      setMessage("Server error occurred");
+    }  catch (error: unknown) {
+      const err = error as AxiosError<{ message: string }>;
+      setMessage(err.response?.data?.message || "Server error occurred");
     }
     setLoading(false);
   };
-
+  
   const handleResendRedirect = () => {
     navigate("/email-verification");
   };
