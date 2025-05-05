@@ -1,5 +1,5 @@
 import { useState } from "react";
-// import { useNavigate } from "react-router-dom"; // Re-enable for navigation
+import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import api from "../api";
 import { AxiosError } from "axios";
@@ -20,7 +20,7 @@ interface RegisterFormData {
 }
 
 const Register = () => {
-  // const navigate = useNavigate(); // Re-enable for navigation
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [formData, setFormData] = useState<RegisterFormData>({
@@ -46,17 +46,19 @@ const Register = () => {
     setMessage("");
 
     try {
-      const response = await api.post("/auth/register", formData); // Fix Axios request
+      const response = await api.post("/auth/register", formData);
       const data = response.data;
 
       if (response.status >= 200 && response.status < 300) {
         setMessage("User registered successfully! A verification link has been sent to your email.");
-        // Optionally navigate to verification page
-        // navigate("/email-verification");
+        // Navigate to login page after successful registration
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
       } else {
         setMessage(data.message || "Registration failed");
       }
-    } catch (error: unknown) { // Use 'unknown' for TypeScript
+    } catch (error: unknown) {
       console.error("Error registering user:", error);
       if (error instanceof AxiosError && error.response?.data) {
         const errorData = error.response.data as ApiErrorResponse;

@@ -7,7 +7,7 @@ import api from "../api";
 import { AxiosError } from "axios";
 
 interface LoginFormData {
-  email: string;
+  identifier: string;
   password: string;
 }
 
@@ -28,7 +28,7 @@ declare global {
 const Login = () => {
   const navigate = useNavigate();
   const [loginFormData, setLoginFormData] = useState<LoginFormData>({
-    email: "",
+    identifier: "",
     password: "",
   });
   const [loading, setLoading] = useState(false);
@@ -46,17 +46,14 @@ const Login = () => {
         const googleButtonElement = document.getElementById("googleButton");
         if (googleButtonElement) {
           console.log("Google button element found");
-          window.google.accounts.id.renderButton(
-            googleButtonElement,
-            {
-              type: "standard",
-              theme: "outline",
-              size: "large",
-              width: "100%",
-              text: "signin_with",
-              shape: "rectangular",
-            }
-          );
+          window.google.accounts.id.renderButton(googleButtonElement, {
+            type: "standard",
+            theme: "outline",
+            size: "large",
+            width: "100%",
+            text: "signin_with",
+            shape: "rectangular",
+          });
         } else {
           console.log("Google button element not found");
         }
@@ -97,24 +94,24 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
-  
+
     try {
       const response = await api.post("/auth/login", loginFormData); // no headers or body
       const data = response.data;
-  
+
       if (data?.refresh_token) {
         localStorage.setItem("refresh_token", data.refresh_token);
         navigate("/dashboard");
       } else {
         setMessage("Login failed");
       }
-    }  catch (error: unknown) {
+    } catch (error: unknown) {
       const err = error as AxiosError<{ message: string }>;
       setMessage(err.response?.data?.message || "Server error occurred");
     }
     setLoading(false);
   };
-  
+
   const handleResendRedirect = () => {
     navigate("/email-verification");
   };
@@ -125,7 +122,7 @@ const Login = () => {
       setMessage("");
 
       const result = await api.post("/google/google-login", {
-        credential: response.credential
+        credential: response.credential,
       });
 
       if (result.data?.refresh_token) {
@@ -143,17 +140,16 @@ const Login = () => {
     }
   };
 
-
   return (
     <StyledContainer>
       <FormCard>
         <h2>Log In</h2>
         <form onSubmit={handleLoginSubmit}>
           <Input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={loginFormData.email}
+            type="text"
+            name="identifier"
+            placeholder="Email or Username"
+            value={loginFormData.identifier}
             onChange={handleLoginChange}
             required
           />
@@ -170,14 +166,12 @@ const Login = () => {
           </Button>
         </form>
         <Divider>
-          <span><b>OR</b></span>
+          <span>
+            <b>OR</b>
+          </span>
         </Divider>
         <div id="googleButton"></div>
-        {message && (
-          <Message success={false}>
-            {message}
-          </Message>
-        )}
+        {message && <Message success={false}>{message}</Message>}
         <ResendSection>
           <h3>Missed the verification email?</h3>
           <Button onClick={handleResendRedirect}>
@@ -202,7 +196,7 @@ const FormCard = styled.div`
   background: white;
   padding: 2rem;
   border-radius: 15px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 500px;
 
@@ -226,7 +220,7 @@ const Input = styled.input`
   &:focus {
     outline: none;
     border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
   }
 `;
 
@@ -255,7 +249,7 @@ const Button = styled.button`
 const Message = styled.p<{ success: boolean }>`
   text-align: center;
   margin-top: 1rem;
-  color: ${props => props.success ? '#10B981' : '#EF4444'};
+  color: ${(props) => (props.success ? "#10B981" : "#EF4444")};
   font-size: 0.9rem;
 `;
 
@@ -277,14 +271,14 @@ const Divider = styled.div`
   align-items: center;
   text-align: center;
   margin: 1rem 0;
-  
+
   &::before,
   &::after {
-    content: '';
+    content: "";
     flex: 1;
     border-bottom: 1px solid #eef2ff;
   }
-  
+
   span {
     padding: 0 1rem;
     color: #666;
