@@ -124,7 +124,7 @@ const Login = () => {
       setLoading(true);
       setMessage("");
 
-      const result = await api.post("/auth/google-login", {
+      const result = await api.post("/google/google-login", {
         credential: response.credential
       });
 

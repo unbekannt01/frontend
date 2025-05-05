@@ -27,7 +27,7 @@ const VerifyEmail = () => {
 
       try {
         console.log("Verifying token:", token); // Debug token
-        const response = await api.post(`/auth/verify-email?token=${token}`); // Fix endpoint and request
+        const response = await api.post(`/email-verification-by-link/verify-email?token=${token}`); // Fix endpoint and request
         const data = response.data;
 
         if (response.status >= 200 && response.status < 300) {

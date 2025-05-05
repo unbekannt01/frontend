@@ -25,7 +25,7 @@ const EmailVerificationPage = () => {
 
     try {
       console.log("Sending email:", email); // Debug payload
-      const response = await api.post("/auth/resend-verification", { email }); // Adjust to /auth/resend-verification if needed
+      const response = await api.post("/email-verification-by-link/resend-verification", { email }); // Adjust to /auth/resend-verification if needed
       const data = response.data;
 
       if (response.status >= 200 && response.status < 300) {
