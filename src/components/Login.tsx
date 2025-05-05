@@ -1,4 +1,6 @@
-import { useState } from "react";
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import api from "../api";
@@ -9,6 +11,20 @@ interface LoginFormData {
   password: string;
 }
 
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: any) => void;
+          renderButton: (element: HTMLElement, config: any) => void;
+          prompt: () => void;
+        };
+      };
+    };
+  }
+}
+
 const Login = () => {
   const navigate = useNavigate();
   const [loginFormData, setLoginFormData] = useState<LoginFormData>({
@@ -17,6 +33,58 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    const initializeGoogleSignIn = () => {
+      if (window.google) {
+        console.log("Google script loaded");
+        window.google.accounts.id.initialize({
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+          callback: handleGoogleLogin,
+        });
+
+        const googleButtonElement = document.getElementById("googleButton");
+        if (googleButtonElement) {
+          console.log("Google button element found");
+          window.google.accounts.id.renderButton(
+            googleButtonElement,
+            {
+              type: "standard",
+              theme: "outline",
+              size: "large",
+              width: "100%",
+              text: "signin_with",
+              shape: "rectangular",
+            }
+          );
+        } else {
+          console.log("Google button element not found");
+        }
+      } else {
+        console.log("Google script not loaded");
+      }
+    };
+
+    // Check if Google script is already loaded
+    if (window.google) {
+      initializeGoogleSignIn();
+    } else {
+      // Wait for Google script to load
+      const checkGoogleScript = setInterval(() => {
+        if (window.google) {
+          console.log("Google script loaded after waiting");
+          clearInterval(checkGoogleScript);
+          initializeGoogleSignIn();
+        }
+      }, 100);
+
+      // Clear interval after 5 seconds if Google script doesn't load
+      setTimeout(() => {
+        clearInterval(checkGoogleScript);
+        console.log("Google script loading timeout");
+      }, 5000);
+    }
+  }, []);
 
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLoginFormData({
@@ -51,6 +119,31 @@ const Login = () => {
     navigate("/email-verification");
   };
 
+  const handleGoogleLogin = async (response: any) => {
+    try {
+      setLoading(true);
+      setMessage("");
+
+      const result = await api.post("/auth/google-login", {
+        credential: response.credential
+      });
+
+      if (result.data?.refresh_token) {
+        localStorage.setItem("refresh_token", result.data.refresh_token);
+        document.cookie = `access_token=${result.data.access_token}; path=/; secure; samesite=lax`;
+        navigate("/dashboard");
+      } else {
+        setMessage("Google login failed");
+      }
+    } catch (error) {
+      const err = error as AxiosError<{ message: string }>;
+      setMessage(err.response?.data?.message || "Google login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   return (
     <StyledContainer>
       <FormCard>
@@ -76,6 +169,10 @@ const Login = () => {
             {loading ? "Logging In..." : "Log In"}
           </Button>
         </form>
+        <Divider>
+          <span><b>OR</b></span>
+        </Divider>
+        <div id="googleButton"></div>
         {message && (
           <Message success={false}>
             {message}
@@ -172,6 +269,26 @@ const ResendSection = styled.div`
     color: #333;
     font-size: 1.2rem;
     margin-bottom: 1rem;
+  }
+`;
+
+const Divider = styled.div`
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1rem 0;
+  
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #eef2ff;
+  }
+  
+  span {
+    padding: 0 1rem;
+    color: #666;
+    font-size: 0.9rem;
   }
 `;
 
