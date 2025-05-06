@@ -63,6 +63,10 @@ const Dashboard = () => {
     }
   };
 
+  const handleUpdateProfile = () => {
+    navigate("/update-profile");
+  };
+
   if (loading) {
     return <LoadingScreen>Loading Dashboard...</LoadingScreen>;
   }
@@ -77,7 +81,10 @@ const Dashboard = () => {
         <UserInfo>
           {user.first_name} {user.last_name} ({user.role})
         </UserInfo>
-        <LogoutButton onClick={handleLogout}>Logout</LogoutButton>
+        <ButtonGroup>
+          <UpdateButton onClick={handleUpdateProfile}>Update Profile</UpdateButton>
+          <LogoutButton onClick={handleLogout}>Logout</LogoutButton>
+        </ButtonGroup>
       </NavBar>
       <Content>
         <WelcomeCard>
@@ -109,6 +116,27 @@ const NavBar = styled.nav`
 const UserInfo = styled.div`
   font-weight: bold;
   color: #333;
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 1rem;
+`;
+
+const UpdateButton = styled.button`
+  padding: 0.5rem 1.5rem;
+  border: 2px solid #4CAF50;
+  border-radius: 8px;
+  background: transparent;
+  color: #4CAF50;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: #4CAF50;
+    color: white;
+  }
 `;
 
 const LogoutButton = styled.button`

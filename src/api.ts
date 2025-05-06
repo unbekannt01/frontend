@@ -4,7 +4,28 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: 'http://localhost:3001',
   withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+  }
 });
+
+// Add request interceptor to add authorization header
+api.interceptors.request.use(
+  (config) => {
+    const access_token = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('access_token='))
+      ?.split('=')[1];
+
+    if (access_token) {
+      config.headers['Authorization'] = `Bearer ${access_token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 api.interceptors.response.use(
   res => res,
@@ -17,13 +38,25 @@ api.interceptors.response.use(
         const res = await axios.post(
           'http://localhost:3001/auth/refresh-token',
           { refresh_token },
-          { withCredentials: true }
+          { 
+            withCredentials: true,
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
         );
+        
+        // Set new tokens
         localStorage.setItem('refresh_token', res.data.refresh_token);
-        return api(originalRequest); // Retry original request
+        document.cookie = `access_token=${res.data.access_token}; path=/; secure; samesite=lax`;
+        
+        // Update the original request's authorization header
+        originalRequest.headers['Authorization'] = `Bearer ${res.data.access_token}`;
+        
+        return api(originalRequest);
       } catch (e) {
         console.error("Refresh token failed", e);
-        window.location.href = "/login"; // force logout
+        window.location.href = "/login";
       }
     }
     return Promise.reject(error);

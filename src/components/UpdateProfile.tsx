@@ -1,37 +1,51 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import api from "../api";
 import { AxiosError } from "axios";
 
-// Define the expected error response shape
-interface ApiErrorResponse {
-  message?: string;
-}
-
-interface RegisterFormData {
+interface UpdateFormData {
   first_name: string;
   last_name: string;
   userName: string;
-  email: string;
-  password: string;
   mobile_no: string;
   birth_date: string;
 }
 
-const Register = () => {
+const UpdateProfile = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [formData, setFormData] = useState<RegisterFormData>({
+  const [formData, setFormData] = useState<UpdateFormData>({
     first_name: "",
     last_name: "",
     userName: "",
-    email: "",
-    password: "",
     mobile_no: "",
     birth_date: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await api.get("/user/user");
+        const userData = response.data;
+        setFormData({
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+          userName: userData.userName,
+          mobile_no: userData.mobile_no,
+          birth_date: userData.birth_date,
+        });
+        setUserEmail(userData.email);
+      } catch (error) {
+        const err = error as AxiosError<{ message: string }>;
+        setMessage(err.response?.data?.message || "Failed to fetch user data");
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -46,35 +60,42 @@ const Register = () => {
     setMessage("");
 
     try {
-      const response = await api.post("/auth/register", formData);
-      const data = response.data;
+      if (!userEmail) {
+        setMessage("User email not found. Please login again.");
+        return;
+      }
 
-      if (response.status >= 200 && response.status < 300) {
-        setMessage("User registered successfully! A verification link has been sent to your email.");
-        // Navigate to login page after successful registration
+      const response = await api.patch(`/user/update?email=${userEmail}`, formData, {
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (
+        response.data &&
+        response.data.message &&
+        response.data.message.toLowerCase().includes("successfully")
+      ) {
+        setMessage("Profile updated successfully!");
         setTimeout(() => {
-          navigate("/login");
+          navigate("/dashboard");
         }, 2000);
       } else {
-        setMessage(data.message || "Registration failed");
+        setMessage(response.data?.message || "Failed to update profile");
       }
-    } catch (error: unknown) {
-      console.error("Error registering user:", error);
-      if (error instanceof AxiosError && error.response?.data) {
-        const errorData = error.response.data as ApiErrorResponse;
-        setMessage(errorData.message || "Registration failed. Please try again.");
-      } else {
-        setMessage("Server error occurred. Please try again.");
-      }
+    } catch (error) {
+      const err = error as AxiosError<{ message: string }>;
+      setMessage(err.response?.data?.message || "Failed to update profile");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <StyledContainer>
+    <Container>
       <FormCard>
-        <h2>Create Your Account</h2>
+        <h2>Update Profile</h2>
         <form onSubmit={handleSubmit}>
           <InputGroup>
             <Input
@@ -103,22 +124,6 @@ const Register = () => {
             required
           />
           <Input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-          <Input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-          />
-          <Input
             type="tel"
             name="mobile_no"
             placeholder="Mobile Number"
@@ -134,28 +139,20 @@ const Register = () => {
             required
           />
           <Button type="submit" disabled={loading}>
-            {loading ? "Creating Account..." : "Register"}
+            {loading ? "Updating..." : "Update Profile"}
           </Button>
-
-          <LoginSwitch>
-            <p>Already have an account?</p>
-            <Button type="button" onClick={() => navigate("/login")}>
-              Log In
-            </Button>
-          </LoginSwitch>
-
-
         </form>
         {message && (
-          <Message success={message.includes("successful")}>{message}</Message>
+          <Message success={message.includes("successfully")}>
+            {message}
+          </Message>
         )}
       </FormCard>
-    </StyledContainer>
+    </Container>
   );
 };
 
-// Styled components (unchanged)
-const StyledContainer = styled.div`
+const Container = styled.div`
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -239,22 +236,11 @@ const Button = styled.button`
   }
 `;
 
-const Message = styled.p<{ success?: boolean }>`
+const Message = styled.p<{ success: boolean }>`
   text-align: center;
   margin-top: 1rem;
-  color: ${(props) => (props.success ? "#10B981" : "#EF4444")};
+  color: ${props => props.success ? '#10B981' : '#EF4444'};
   font-size: 0.9rem;
 `;
 
-const LoginSwitch = styled.div`
-  margin-top: 2rem;
-  text-align: center;
-
-  p {
-    margin-bottom: 0.5rem;
-    color: #666;
-  }
-`;
-
-
-export default Register;
+export default UpdateProfile; 

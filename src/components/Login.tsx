@@ -96,11 +96,13 @@ const Login = () => {
     setMessage("");
 
     try {
-      const response = await api.post("/auth/login", loginFormData); // no headers or body
+      const response = await api.post("/auth/login", loginFormData);
       const data = response.data;
 
       if (data?.refresh_token) {
         localStorage.setItem("refresh_token", data.refresh_token);
+        localStorage.setItem("userEmail", loginFormData.identifier);
+        document.cookie = `access_token=${data.access_token}; path=/; secure; samesite=lax`;
         navigate("/dashboard");
       } else {
         setMessage("Login failed");
@@ -178,6 +180,13 @@ const Login = () => {
             Resend Verification Email
           </Button>
         </ResendSection>
+        <RegisterSwitch>
+          <p>Don't have an account?</p>
+          <Button type="button" onClick={() => navigate("/register")}>
+            Register
+          </Button>
+        </RegisterSwitch>
+
       </FormCard>
     </StyledContainer>
   );
@@ -285,5 +294,16 @@ const Divider = styled.div`
     font-size: 0.9rem;
   }
 `;
+
+const RegisterSwitch = styled.div`
+  margin-top: 2rem;
+  text-align: center;
+
+  p {
+    margin-bottom: 0.5rem;
+    color: #666;
+  }
+`;
+
 
 export default Login;
