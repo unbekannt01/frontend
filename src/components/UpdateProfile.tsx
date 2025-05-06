@@ -24,6 +24,9 @@ const UpdateProfile = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [userEmail, setUserEmail] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string>("");
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -38,6 +41,9 @@ const UpdateProfile = () => {
           birth_date: userData.birth_date,
         });
         setUserEmail(userData.email);
+        if (userData.avatar) {
+          setPreview(`http://localhost:3001/uploads/${userData.avatar}`);
+        }
       } catch (error) {
         const err = error as AxiosError<{ message: string }>;
         setMessage(err.response?.data?.message || "Failed to fetch user data");
@@ -65,12 +71,28 @@ const UpdateProfile = () => {
         return;
       }
 
-      const response = await api.patch(`/user/update?email=${userEmail}`, formData, {
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      const formDataToSend = new FormData();
+      
+      // Append file if exists
+      if (file) {
+        formDataToSend.append('avatar', file);
+      }
+
+      // Append all other form data
+      Object.entries(formData).forEach(([key, value]) => {
+        formDataToSend.append(key, value);
       });
+
+      const response = await api.patch(
+        `/user/update?email=${userEmail}`,
+        formDataToSend,
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
 
       if (
         response.data &&
@@ -92,11 +114,73 @@ const UpdateProfile = () => {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(selectedFile);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile && droppedFile.type.startsWith('image/')) {
+      setFile(droppedFile);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(droppedFile);
+    }
+  };
+
   return (
     <Container>
       <FormCard>
         <h2>Update Profile</h2>
         <form onSubmit={handleSubmit}>
+        <FileUploadContainer
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            isDragging={isDragging}
+          >
+            <input
+              type="file"
+              id="file-upload"
+              onChange={handleFileChange}
+              accept="image/*"
+              style={{ display: 'none' }}
+            />
+            <label htmlFor="file-upload">
+              {preview ? (
+                <PreviewImage src={preview} alt="Preview" />
+              ) : (
+                <UploadPlaceholder>
+                  <UploadIcon>📁</UploadIcon>
+                  <UploadText>
+                    Drag and drop your profile picture here, or click to select
+                  </UploadText>
+                </UploadPlaceholder>
+              )}
+            </label>
+          </FileUploadContainer>
           <InputGroup>
             <Input
               type="text"
@@ -205,42 +289,77 @@ const Input = styled.input`
 `;
 
 const DateInput = styled(Input)`
-  color: #666;
+  color: #333;
+`;
 
-  &::-webkit-calendar-picker-indicator {
-    cursor: pointer;
-    opacity: 0.6;
-    filter: invert(0.8);
+const FileUploadContainer = styled.div<{ isDragging: boolean }>`
+  border: 2px dashed ${props => props.isDragging ? '#667eea' : '#eef2ff'};
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 1rem;
+  background: ${props => props.isDragging ? 'rgba(102, 126, 234, 0.1)' : 'transparent'};
+
+  &:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
   }
+`;
+
+const UploadPlaceholder = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+`;
+
+const UploadIcon = styled.div`
+  font-size: 2.5rem;
+`;
+
+const UploadText = styled.p`
+  color: #666;
+  margin: 0;
+`;
+
+const PreviewImage = styled.img`
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  object-fit: cover;
 `;
 
 const Button = styled.button`
   width: 100%;
   padding: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   border: none;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.3s ease;
+  transition: all 0.3s ease;
 
   &:hover {
-    transform: translateY(-1px);
+    background: #5a67d8;
   }
 
   &:disabled {
-    opacity: 0.7;
+    background: #a5b4fc;
     cursor: not-allowed;
   }
 `;
 
-const Message = styled.p<{ success: boolean }>`
-  text-align: center;
+const Message = styled.div<{ success: boolean }>`
   margin-top: 1rem;
-  color: ${props => props.success ? '#10B981' : '#EF4444'};
-  font-size: 0.9rem;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  background: ${props => props.success ? '#c6f6d5' : '#fed7d7'};
+  color: ${props => props.success ? '#2f855a' : '#c53030'};
 `;
 
 export default UpdateProfile; 

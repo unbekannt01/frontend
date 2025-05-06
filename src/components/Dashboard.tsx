@@ -14,14 +14,15 @@ interface User {
   mobile_no: string;
   age: number;
   avatar?: string;
+  status: string;
 }
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [file, setFile] = useState(null);
-  const [uploadedUrl, setUploadedUrl] = useState("");
+  // const [file, setFile] = useState(null);
+  // const [uploadedUrl, setUploadedUrl] = useState("");
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -70,31 +71,6 @@ const Dashboard = () => {
     navigate("/update-profile");
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFile(e.target.files?.[0] as any); // Type assertion to fix type mismatch
-  };
-
-  const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const res = await api.post("http://localhost:3001/file-upload/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      // The backend returns the file path, e.g., { fileURLToPath: 'uploads/filename.jpg' }
-      if (res.data.fileURLToPath) {
-        setUploadedUrl(`http://localhost:3001/${res.data.fileURLToPath}`);
-      }
-      alert(res.data.message);
-    } catch (err) {
-      alert("Upload failed!");
-    }
-  };
-
   if (loading) {
     return <LoadingScreen>Loading Dashboard...</LoadingScreen>;
   }
@@ -115,32 +91,44 @@ const Dashboard = () => {
         </ButtonGroup>
       </NavBar>
       <Content>
-        <WelcomeCard>
-          {user.avatar && (
-            <img
+        <ProfileCard>
+          {user.avatar ? (
+            <Avatar
               src={`http://localhost:3001/uploads/${user.avatar}`}
-              alt="Profile"
-              style={{ width: 100, height: 100, borderRadius: "50%", objectFit: "cover", marginBottom: 16 }}
+              alt="User Profile"
             />
+          ) : (
+            <AvatarPlaceholder>
+              {user.first_name?.[0]}{user.last_name?.[0]}
+            </AvatarPlaceholder>
           )}
-          <h1>Welcome, {user.first_name} 👋</h1>
-          <p>Email: {user.email}</p>
-          <p>Username: {user.userName}</p>
-          <p>Mobile: {user.mobile_no}</p>
-          <p>Age: {user.age}</p>
-        </WelcomeCard>
-        <FileUpload>
-          <form onSubmit={handleUpload}>
-            <input type="file" onChange={handleFileChange} accept="image/*,application/pdf" />
-            <button type="submit">Upload</button>
-          </form>
-          {uploadedUrl && (
-            <div>
-              <h4>Preview:</h4>
-              <img src={uploadedUrl} alt="Uploaded" style={{ maxWidth: 300 }} />
-            </div>
-          )}
-        </FileUpload>
+
+          <Name>{user.first_name} {user.last_name}</Name>
+          <RoleTag>{user.role}</RoleTag>
+
+          <InfoSection>
+            <InfoItem>
+              <InfoLabel>Email:</InfoLabel>
+              <InfoValue>{user.email}</InfoValue>
+            </InfoItem>
+            <InfoItem>
+              <InfoLabel>Username:</InfoLabel>
+              <InfoValue>{user.userName}</InfoValue>
+            </InfoItem>
+            <InfoItem>
+              <InfoLabel>Mobile:</InfoLabel>
+              <InfoValue>{user.mobile_no || "N/A"}</InfoValue>
+            </InfoItem>
+            <InfoItem>
+              <InfoLabel>Status:</InfoLabel>
+              <InfoValue>{user.status}</InfoValue>
+            </InfoItem>
+            <InfoItem>
+              <InfoLabel>Age:</InfoLabel>
+              <InfoValue>{user.age || "N/A"}</InfoValue>
+            </InfoItem>
+          </InfoSection>
+        </ProfileCard>
       </Content>
     </StyledDashboard>
   );
@@ -203,29 +191,10 @@ const LogoutButton = styled.button`
 `;
 
 const Content = styled.main`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: calc(100vh - 70px);
   padding: 2rem;
-`;
-
-const WelcomeCard = styled.div`
-  background: white;
-  padding: 3rem;
-  border-radius: 15px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  max-width: 600px;
-
-  h1 {
-    margin-bottom: 1.5rem;
-  }
-
-  p {
-    color: #666;
-    margin-bottom: 0.5rem;
-  }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 `;
 
 const LoadingScreen = styled.div`
@@ -236,9 +205,93 @@ const LoadingScreen = styled.div`
   font-size: 1.2rem;
 `;
 
-const FileUpload = styled.div`
-  margin-top: 2rem;
-  text-align: center;
+const ProfileCard = styled.div`
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 500px;
+  width: 100%;
 `;
+
+const Avatar = styled.img`
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #764ba2;
+  margin-bottom: 1.5rem;
+`;
+
+const AvatarPlaceholder = styled.div`
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: #764ba2;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+`;
+
+const Name = styled.h2`
+  margin: 0.5rem 0;
+  font-size: 1.8rem;
+  color: #333;
+`;
+
+const RoleTag = styled.div`
+  background: #764ba2;
+  color: white;
+  padding: 0.3rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+`;
+
+const InfoSection = styled.div`
+  width: 100%;
+`;
+
+const InfoItem = styled.div`
+  display: flex;
+  margin: 0.8rem 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.8rem;
+`;
+
+const InfoLabel = styled.div`
+  width: 30%;
+  font-weight: bold;
+  color: #555;
+`;
+
+const InfoValue = styled.div`
+  width: 70%;
+  color: #333;
+`;
+
+// const ActionButton = styled.button`
+//   margin-top: 1.5rem;
+//   padding: 0.6rem 1.2rem;
+//   background: #764ba2;
+//   color: white;
+//   border: none;
+//   border-radius: 8px;
+//   font-weight: bold;
+//   cursor: pointer;
+//   transition: background 0.3s ease;
+
+//   &:hover {
+//     background: #5a3789;
+//   }
+// `;
 
 export default Dashboard;
