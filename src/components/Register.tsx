@@ -46,6 +46,19 @@ const Register = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
+      // Validate file size (5MB limit)
+      if (selectedFile.size > 5 * 1024 * 1024) {
+        setMessage("File size should be less than 5MB");
+        return;
+      }
+
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+      if (!validTypes.includes(selectedFile.type)) {
+        setMessage("Please upload a valid image file (JPG, PNG, or GIF)");
+        return;
+      }
+
       setFile(selectedFile);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -114,7 +127,20 @@ const Register = () => {
     e.preventDefault();
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files?.[0];
-    if (droppedFile && droppedFile.type.startsWith('image/')) {
+    
+    if (droppedFile) {
+      // Validate file size (5MB limit)
+      if (droppedFile.size > 5 * 1024 * 1024) {
+        setMessage("File size should be less than 5MB");
+        return;
+      }
+
+      // Validate file type
+      if (!droppedFile.type.startsWith('image/')) {
+        setMessage("Please upload a valid image file (JPG, PNG, or GIF)");
+        return;
+      }
+
       setFile(droppedFile);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -205,10 +231,11 @@ const Register = () => {
                 <PreviewImage src={preview} alt="Preview" />
               ) : (
                 <UploadPlaceholder>
-                  <UploadIcon>📁</UploadIcon>
+                  <UploadIcon>👤</UploadIcon>
                   <UploadText>
                     Drag and drop your profile picture here, or click to select
                   </UploadText>
+                  <UploadHint>Supported formats: JPG, PNG, GIF (Max size: 5MB)</UploadHint>
                 </UploadPlaceholder>
               )}
             </label>
@@ -357,6 +384,12 @@ const UploadIcon = styled.div`
 const UploadText = styled.p`
   color: #666;
   margin: 0;
+`;
+
+const UploadHint = styled.p`
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 0.5rem;
 `;
 
 const FileUploadContainer = styled.div<{ isDragging: boolean }>`
