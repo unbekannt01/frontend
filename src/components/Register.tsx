@@ -23,6 +23,9 @@ const Register = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string>("");
+  const [isDragging, setIsDragging] = useState(false);
   const [formData, setFormData] = useState<RegisterFormData>({
     first_name: "",
     last_name: "",
@@ -40,23 +43,49 @@ const Register = () => {
     });
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(selectedFile);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
 
     try {
-      const response = await api.post("/auth/register", formData);
-      const data = response.data;
+      const formDataToSend = new FormData();
+
+      // Append file if it exists
+      if (file) {
+        formDataToSend.append("avatar", file);
+      }
+
+      // Append all other form fields
+      Object.entries(formData).forEach(([key, value]) => {
+        formDataToSend.append(key, value);
+      });
+
+      const response = await api.post("/auth/register", formDataToSend, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       if (response.status >= 200 && response.status < 300) {
         setMessage("User registered successfully! A verification link has been sent to your email.");
-        // Navigate to login page after successful registration
         setTimeout(() => {
           navigate("/login");
         }, 2000);
       } else {
-        setMessage(data.message || "Registration failed");
+        setMessage(response.data?.message || "Registration failed");
       }
     } catch (error: unknown) {
       console.error("Error registering user:", error);
@@ -68,6 +97,30 @@ const Register = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile && droppedFile.type.startsWith('image/')) {
+      setFile(droppedFile);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(droppedFile);
     }
   };
 
@@ -133,6 +186,33 @@ const Register = () => {
             onChange={handleChange}
             required
           />
+
+          <FileUploadContainer
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            isDragging={isDragging}
+          >
+            <input
+              type="file"
+              id="file-upload"
+              onChange={handleFileChange}
+              accept="image/*"
+              style={{ display: 'none' }}
+            />
+            <label htmlFor="file-upload">
+              {preview ? (
+                <PreviewImage src={preview} alt="Preview" />
+              ) : (
+                <UploadPlaceholder>
+                  <UploadIcon>📁</UploadIcon>
+                  <UploadText>
+                    Drag and drop your profile picture here, or click to select
+                  </UploadText>
+                </UploadPlaceholder>
+              )}
+            </label>
+          </FileUploadContainer>
           <Button type="submit" disabled={loading}>
             {loading ? "Creating Account..." : "Register"}
           </Button>
@@ -256,5 +336,42 @@ const LoginSwitch = styled.div`
   }
 `;
 
+const PreviewImage = styled.img`
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  object-fit: cover;
+`;
+
+const UploadPlaceholder = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+`;
+
+const UploadIcon = styled.div`
+  font-size: 2.5rem;
+`;
+
+const UploadText = styled.p`
+  color: #666;
+  margin: 0;
+`;
+
+const FileUploadContainer = styled.div<{ isDragging: boolean }>`
+  border: 2px dashed ${props => props.isDragging ? '#667eea' : '#eef2ff'};
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 1rem;
+  background: ${props => props.isDragging ? 'rgba(102, 126, 234, 0.1)' : 'transparent'};
+
+  &:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+  }`;
 
 export default Register;
