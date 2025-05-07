@@ -17,10 +17,26 @@ interface User {
   status: string;
 }
 
+interface ChangePasswordData {
+  email: string;
+  password: string;
+  newpwd: string;
+  confirmPassword: string;
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [passwordData, setPasswordData] = useState<ChangePasswordData>({
+    email: "",
+    password: "",
+    newpwd: "",
+    confirmPassword: "",
+  });
+  const [passwordMessage, setPasswordMessage] = useState("");
   // const [file, setFile] = useState(null);
   // const [uploadedUrl, setUploadedUrl] = useState("");
 
@@ -71,6 +87,61 @@ const Dashboard = () => {
     navigate("/update-profile");
   };
 
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPasswordData({
+      ...passwordData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordMessage("");
+
+    if (!user?.email) {
+      setPasswordMessage("User email not found. Please try again.");
+      return;
+    }
+
+    if (passwordData.newpwd !== passwordData.confirmPassword) {
+      setPasswordMessage("New passwords do not match");
+      return;
+    }
+
+    try {
+      const response = await api.post(
+        "/auth/changepwd",
+        {
+          email: user.email,
+          password: passwordData.password,
+          newpwd: passwordData.newpwd,
+        },
+        {
+          withCredentials: true,
+        }
+      );  
+
+      if (response.status === 200) {
+        setShowSuccessPopup(true);
+        setShowPasswordModal(false);
+        setPasswordData({
+          email: "",
+          password: "",
+          newpwd: "",
+          confirmPassword: "",
+        });
+        
+        // Hide success popup after 3 seconds
+        setTimeout(() => {
+          setShowSuccessPopup(false);
+        }, 3000);
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Failed to change password";
+      setPasswordMessage(errorMessage);
+    }
+  };
+
   if (loading) {
     return <LoadingScreen>Loading Dashboard...</LoadingScreen>;
   }
@@ -87,6 +158,9 @@ const Dashboard = () => {
         </UserInfo>
         <ButtonGroup>
           <UpdateButton onClick={handleUpdateProfile}>Update Profile</UpdateButton>
+          <ChangePasswordButton onClick={() => setShowPasswordModal(true)}>
+            Change Password
+          </ChangePasswordButton>
           <LogoutButton onClick={handleLogout}>Logout</LogoutButton>
         </ButtonGroup>
       </NavBar>
@@ -130,6 +204,67 @@ const Dashboard = () => {
           </InfoSection>
         </ProfileCard>
       </Content>
+      {showPasswordModal && (
+        <ModalOverlay>
+          <ModalContent>
+            <ModalHeader>
+              <h2>Change Password</h2>
+              <CloseButton onClick={() => setShowPasswordModal(false)}>×</CloseButton>
+            </ModalHeader>
+            <ModalBody>
+              <form onSubmit={handlePasswordSubmit}>
+                <InputGroup>
+                  <Label>Current Password</Label>
+                  <Input
+                    type="password"
+                    name="password"
+                    value={passwordData.password}
+                    onChange={handlePasswordChange}
+                    required
+                  />
+                </InputGroup>
+                <InputGroup>
+                  <Label>New Password</Label>
+                  <Input
+                    type="password"
+                    name="newpwd"
+                    value={passwordData.newpwd}
+                    onChange={handlePasswordChange}
+                    required
+                  />
+                </InputGroup>
+                <InputGroup>
+                  <Label>Confirm New Password</Label>
+                  <Input
+                    type="password"
+                    name="confirmPassword"
+                    value={passwordData.confirmPassword}
+                    onChange={handlePasswordChange}
+                    required
+                  />
+                </InputGroup>
+                {passwordMessage && (
+                  <Message success={passwordMessage.includes("Successfully")}>
+                    {passwordMessage}
+                  </Message>
+                )}
+                <ButtonGroup>
+                  <SubmitButton type="submit">Change Password</SubmitButton>
+                  <CancelButton type="button" onClick={() => setShowPasswordModal(false)}>
+                    Cancel
+                  </CancelButton>
+                </ButtonGroup>
+              </form>
+            </ModalBody>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+      {showSuccessPopup && (
+        <SuccessPopup>
+          <SuccessIcon>✓</SuccessIcon>
+          <SuccessMessage>Password changed successfully!</SuccessMessage>
+        </SuccessPopup>
+      )}
     </StyledDashboard>
   );
 };
@@ -174,6 +309,17 @@ const UpdateButton = styled.button`
   }
 `;
 
+const ChangePasswordButton = styled(UpdateButton)`
+  background: #4CAF50;
+  border-color: #4CAF50;
+  color: white;
+
+  &:hover {
+    background: #45a049;
+    border-color: #45a049;
+  }
+`;
+
 const LogoutButton = styled.button`
   padding: 0.5rem 1.5rem;
   border: 2px solid #764ba2;
@@ -209,7 +355,7 @@ const ProfileCard = styled.div`
   background: white;
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 3rem;
+  padding: 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -293,5 +439,158 @@ const InfoValue = styled.div`
 //     background: #5a3789;
 //   }
 // `;
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid #eee;
+
+  h2 {
+    margin: 0;
+    color: #333;
+  }
+`;
+
+const ModalBody = styled.div`
+  padding: 1.5rem;
+`;
+
+const InputGroup = styled.div`
+  margin-bottom: 1rem;
+`;
+
+const Label = styled.label`
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #555;
+  font-weight: 500;
+`;
+
+const Input = styled.input`
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+
+  &:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+  }
+`;
+
+const Message = styled.div<{ success?: boolean }>`
+  padding: 0.75rem;
+  margin: 1rem 0;
+  border-radius: 4px;
+  background: ${props => props.success ? '#e8f5e9' : '#ffebee'};
+  color: ${props => props.success ? '#2e7d32' : '#c62828'};
+  font-size: 0.9rem;
+`;
+
+const SubmitButton = styled.button`
+  padding: 0.75rem 1.5rem;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.3s;
+
+  &:hover {
+    background: #45a049;
+  }
+`;
+
+const CancelButton = styled.button`
+  padding: 0.75rem 1.5rem;
+  background: #f5f5f5;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  &:hover {
+    background: #e0e0e0;
+  }
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #666;
+  cursor: pointer;
+  padding: 0.5rem;
+  line-height: 1;
+
+  &:hover {
+    color: #333;
+  }
+`;
+
+const SuccessPopup = styled.div`
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #4CAF50;
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideIn 0.3s ease-out;
+  z-index: 1100;
+
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+`;
+
+const SuccessIcon = styled.div`
+  font-size: 1.5rem;
+  font-weight: bold;
+`;
+
+const SuccessMessage = styled.div`
+  font-size: 1rem;
+  font-weight: 500;
+`;
 
 export default Dashboard;

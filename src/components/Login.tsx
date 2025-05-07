@@ -1,10 +1,11 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import styled from "styled-components";
 import api from "../api";
 import { AxiosError } from "axios";
+import { Link } from "react-router-dom";
 
 interface LoginFormData {
   identifier: string;
@@ -27,12 +28,20 @@ declare global {
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loginFormData, setLoginFormData] = useState<LoginFormData>({
-    identifier: "",
+    identifier: location.state?.email || "",
     password: "",
   });
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(location.state?.message || "");
+
+  // Clear location state after using it
+  useEffect(() => {
+    if (location.state) {
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const initializeGoogleSignIn = () => {
@@ -163,6 +172,9 @@ const Login = () => {
             onChange={handleLoginChange}
             required
           />
+          <div className="forgot-password">
+            <Link to="/forgot-password">Forgot Password?</Link>
+          </div>
           <Button type="submit" disabled={loading}>
             {loading ? "Logging In..." : "Log In"}
           </Button>
@@ -186,7 +198,11 @@ const Login = () => {
             Register
           </Button>
         </RegisterSwitch>
-
+        {/* <ForgotSwitch>
+          <Button type="button" onClick={() => navigate("/forgot-password")}>
+            Forgot Password
+          </Button>
+        </ForgotSwitch> */}
       </FormCard>
     </StyledContainer>
   );
@@ -214,6 +230,22 @@ const FormCard = styled.div`
     text-align: center;
     margin-bottom: 2rem;
     font-size: 1.8rem;
+  }
+
+  .forgot-password {
+    text-align: right;
+    margin-top: -0.5rem;
+    margin-bottom: 1rem;
+    
+    a {
+      color: #667eea;
+      text-decoration: none;
+      font-size: 0.9rem;
+      
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 `;
 
@@ -296,7 +328,7 @@ const Divider = styled.div`
 `;
 
 const RegisterSwitch = styled.div`
-  margin-top: 2rem;
+  margin-top: 1rem;
   text-align: center;
 
   p {
@@ -304,6 +336,16 @@ const RegisterSwitch = styled.div`
     color: #666;
   }
 `;
+
+// const ForgotSwitch = styled.div`
+//   margin-top: 1rem;
+//   text-align: center;
+
+//   p {
+//     margin-bottom: 0.5rem;
+//     color: #666;
+//   }
+// `;
 
 
 export default Login;

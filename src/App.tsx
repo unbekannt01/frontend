@@ -8,6 +8,9 @@ import Dashboard from "./components/Dashboard";
 import AdminPage from "./components/AdminPage";
 import EmailVerificationPage from "./components/EmailVerificationPage";
 import UpdateProfile from "./components/UpdateProfile";
+import ForgotPassword from "./components/ForgotPassword";
+import ResetPassword from "./components/ResetPassword";
+import VerifyOtp from "./components/VerifyOtp";
 
 // Helper function to check auth status
 const isAuthenticated = () => {
@@ -37,6 +40,9 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/update-profile" element={<UpdateProfile />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/verify-otp" element={<VerifyOtp />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
     </div>
   );

@@ -1,73 +1,66 @@
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import api from "../api";
 
 const VerifyOtp = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const email = location.state?.email;
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
 
+  useEffect(() => {
+    const storedEmail = localStorage.getItem("resetEmail");
+    if (!storedEmail) {
+      navigate("/forgot-password");
+    } else {
+      setEmail(storedEmail);
+    }
+  }, [navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
-      setMessage("Email not found. Please register again.");
+      setMessage("Email not found. Please try again.");
       return;
     }
     setLoading(true);
     try {
-      const response = await api.post("/otp/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otp, email }),
-      });
-
-      const data = await response.data();
+      const response = await api.post("/otp/verify-otp", { email, otp });
       
       if (response.data) {
-        setMessage("Email verified successfully!");
-        navigate("/login", { replace: true });
+        navigate("/reset-password");
       } else {
-        setMessage(data.message || "Verification failed");
+        setMessage("Verification failed");
       }
-    } catch {
-      setMessage("Server error occurred");
+    } catch (error: any) {
+      setMessage(error.response?.data?.message || "Verification failed");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleResendOtp = async () => {
     if (!email) return;
     setResendLoading(true);
     try {
-      const response = await api.post("/otp/resend-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.data();
-      setMessage(data.message || "OTP resent successfully!");
-    } catch {
-      setMessage("Failed to resend OTP");
+      const response = await api.post("/otp/resend-otp", { email });
+      if (response.data) {
+        setMessage("OTP resent successfully!");
+      }
+    } catch (error: any) {
+      setMessage(error.response?.data?.message || "Failed to resend OTP");
     }
     setResendLoading(false);
   };
 
-  if (!email) {
-    navigate("/register");
-    return null;
-  }
-
   return (
     <StyledContainer>
       <FormCard>
-        <h2>Verify Your Email</h2>
-        <p className="subtitle">Enter the OTP sent to {email}</p>
+        <h2>Verify OTP</h2>
+        <p className="subtitle">Enter the verification code sent to {email}</p>
         <form onSubmit={handleSubmit}>
           <OtpInput
             type="text"
