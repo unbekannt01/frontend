@@ -12,7 +12,7 @@
     "deploy": "gh-pages -d build",
     "homepage": "https://unbekannt01.github.io/frontend"
   },
-  "dependencies": {git 
+  "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^7.0.2",
