@@ -72,10 +72,10 @@ const UpdateProfile = () => {
       }
 
       const formDataToSend = new FormData();
-      
+
       // Append file if exists
       if (file) {
-        formDataToSend.append('avatar', file);
+        formDataToSend.append("avatar", file);
       }
 
       // Append all other form data
@@ -89,8 +89,8 @@ const UpdateProfile = () => {
         {
           withCredentials: true,
           headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+            "Content-Type": "multipart/form-data",
+          },
         }
       );
 
@@ -140,7 +140,7 @@ const UpdateProfile = () => {
     e.preventDefault();
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files?.[0];
-    if (droppedFile && droppedFile.type.startsWith('image/')) {
+    if (droppedFile && droppedFile.type.startsWith("image/")) {
       setFile(droppedFile);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -155,7 +155,7 @@ const UpdateProfile = () => {
       <FormCard>
         <h2>Update Profile</h2>
         <form onSubmit={handleSubmit}>
-        <FileUploadContainer
+          <FileUploadContainer
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -166,17 +166,20 @@ const UpdateProfile = () => {
               id="file-upload"
               onChange={handleFileChange}
               accept="image/*"
-              style={{ display: 'none' }}
+              style={{ display: "none" }}
             />
             <label htmlFor="file-upload">
               {preview ? (
                 <PreviewImage src={preview} alt="Preview" />
               ) : (
                 <UploadPlaceholder>
-                  <UploadIcon>📁</UploadIcon>
+                  <UploadIcon>👤</UploadIcon>
                   <UploadText>
                     Drag and drop your profile picture here, or click to select
                   </UploadText>
+                  <UploadHint>
+                    Supported formats: JPG, PNG, GIF (Max size: 5MB)
+                  </UploadHint>
                 </UploadPlaceholder>
               )}
             </label>
@@ -308,6 +311,13 @@ const FileUploadContainer = styled.div<{ isDragging: boolean }>`
   }
 `;
 
+const PreviewImage = styled.img`
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  object-fit: cover;
+`;
+
 const UploadPlaceholder = styled.div`
   display: flex;
   flex-direction: column;
@@ -324,11 +334,10 @@ const UploadText = styled.p`
   margin: 0;
 `;
 
-const PreviewImage = styled.img`
-  max-width: 200px;
-  max-height: 200px;
-  border-radius: 8px;
-  object-fit: cover;
+const UploadHint = styled.p`
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 0.5rem;
 `;
 
 const Button = styled.button`
@@ -358,8 +367,8 @@ const Message = styled.div<{ success: boolean }>`
   padding: 1rem;
   border-radius: 8px;
   text-align: center;
-  background: ${props => props.success ? '#c6f6d5' : '#fed7d7'};
-  color: ${props => props.success ? '#2f855a' : '#c53030'};
+  background: ${(props) => (props.success ? "#c6f6d5" : "#fed7d7")};
+  color: ${(props) => (props.success ? "#2f855a" : "#c53030")};
 `;
 
-export default UpdateProfile; 
+export default UpdateProfile;
