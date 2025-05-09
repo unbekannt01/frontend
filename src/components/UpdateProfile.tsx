@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import api from "../api";
 import { AxiosError } from "axios";
+import defaultAvatar from "../assets/default-avatar.png"; // Import your default avatar image
 
 interface UpdateFormData {
   first_name: string;
@@ -25,7 +26,7 @@ const UpdateProfile = () => {
   const [message, setMessage] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string>("");
+  const [preview, setPreview] = useState<string>(defaultAvatar); // Initialize with default avatar
   const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
@@ -42,11 +43,18 @@ const UpdateProfile = () => {
         });
         setUserEmail(userData.email);
         if (userData.avatar) {
-          setPreview(`http://localhost:3001/uploads/${userData.avatar}`);
+          const imageUrl = `http://localhost:3001/uploads/${userData.avatar}`;
+          setPreview(imageUrl);
+          console.log("Fetched avatar URL:", imageUrl);
+        } else {
+          console.log("User has no avatar, using default.");
         }
       } catch (error) {
         const err = error as AxiosError<{ message: string }>;
         setMessage(err.response?.data?.message || "Failed to fetch user data");
+        console.error("Error fetching user data:", error);
+        console.log("Failed to fetch avatar, using default.");
+        setPreview(defaultAvatar); // Fallback to default on error
       }
     };
 
@@ -73,12 +81,10 @@ const UpdateProfile = () => {
 
       const formDataToSend = new FormData();
 
-      // Append file if exists
       if (file) {
         formDataToSend.append("avatar", file);
       }
 
-      // Append all other form data
       Object.entries(formData).forEach(([key, value]) => {
         formDataToSend.append(key, value);
       });
@@ -109,6 +115,7 @@ const UpdateProfile = () => {
     } catch (error) {
       const err = error as AxiosError<{ message: string }>;
       setMessage(err.response?.data?.message || "Failed to update profile");
+      console.error("Error updating profile:", error);
     } finally {
       setLoading(false);
     }
@@ -117,6 +124,15 @@ const UpdateProfile = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
+      if (selectedFile.size > 5 * 1024 * 1024) {
+        setMessage("File size should be less than 5MB");
+        return;
+      }
+      if (!selectedFile.type.startsWith('image/')) {
+        setMessage("Please upload a valid image file (JPG, PNG, or GIF)");
+        return;
+      }
+
       setFile(selectedFile);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -140,7 +156,18 @@ const UpdateProfile = () => {
     e.preventDefault();
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files?.[0];
-    if (droppedFile && droppedFile.type.startsWith("image/")) {
+
+    if (droppedFile) {
+      if (droppedFile.size > 5 * 1024 * 1024) {
+        setMessage("File size should be less than 5MB");
+        return;
+      }
+
+      if (!droppedFile.type.startsWith('image/')) {
+        setMessage("Please upload a valid image file (JPG, PNG, or GIF)");
+        return;
+      }
+
       setFile(droppedFile);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -153,6 +180,9 @@ const UpdateProfile = () => {
   return (
     <Container>
       <FormCard>
+        <BackButton type="button" onClick={() => navigate(-1)}>
+          Back
+        </BackButton>
         <h2>Update Profile</h2>
         <form onSubmit={handleSubmit}>
           <FileUploadContainer
@@ -169,20 +199,16 @@ const UpdateProfile = () => {
               style={{ display: "none" }}
             />
             <label htmlFor="file-upload">
-              {preview ? (
-                <PreviewImage src={preview} alt="Preview" />
-              ) : (
-                <UploadPlaceholder>
-                  <UploadIcon>👤</UploadIcon>
-                  <UploadText>
-                    Drag and drop your profile picture here, or click to select
-                  </UploadText>
-                  <UploadHint>
-                    Supported formats: JPG, PNG, GIF (Max size: 5MB)
-                  </UploadHint>
-                </UploadPlaceholder>
-              )}
+              <PreviewImage src={preview} alt="Profile Preview" onError={() => setPreview(defaultAvatar)} />
             </label>
+            <UploadPlaceholder>
+              <UploadText>
+                Drag and drop your profile picture here, or click to select
+              </UploadText>
+              <UploadHint>
+                Supported formats: JPG, PNG, GIF (Max size: 5MB)
+              </UploadHint>
+            </UploadPlaceholder>
           </FileUploadContainer>
           <InputGroup>
             <Input
@@ -255,6 +281,7 @@ const FormCard = styled.div`
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   width: 100%;
   max-width: 500px;
+  position: relative;
 
   h2 {
     color: #333;
@@ -316,28 +343,29 @@ const PreviewImage = styled.img`
   max-height: 200px;
   border-radius: 8px;
   object-fit: cover;
+  margin-bottom: 1rem; /* Add some space below the preview */
 `;
 
 const UploadPlaceholder = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem; /* Reduced gap for better visual flow */
 `;
 
-const UploadIcon = styled.div`
-  font-size: 2.5rem;
-`;
 
 const UploadText = styled.p`
-  color: #666;
+  color: #777;
   margin: 0;
+  font-size: 0.9rem;
+  text-align: center;
 `;
 
 const UploadHint = styled.p`
-  font-size: 0.8rem;
-  color: #666;
-  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #999;
+  margin-top: 0.25rem;
+  text-align: center;
 `;
 
 const Button = styled.button`
@@ -359,6 +387,28 @@ const Button = styled.button`
   &:disabled {
     background: #a5b4fc;
     cursor: not-allowed;
+  }
+`;
+
+const BackButton = styled.button`
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: auto;
+  padding: 8px 18px;
+  background: transparent;
+  border: 2px solid #667eea;
+  color: #667eea;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 2;
+
+  &:hover {
+    background: #667eea;
+    color: white;
   }
 `;
 
