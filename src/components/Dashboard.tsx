@@ -136,6 +136,7 @@ const Dashboard = () => {
           setShowSuccessPopup(false);
         }, 3000);
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || "Failed to change password";
       setPasswordMessage(errorMessage);
