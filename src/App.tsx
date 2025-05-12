@@ -11,6 +11,7 @@ import UpdateProfile from "./components/UpdateProfile";
 import ForgotPassword from "./components/ForgotPassword";
 import ResetPassword from "./components/ResetPassword";
 import VerifyOtp from "./components/VerifyOtp";
+// import CheckTokenGuard from "./components/CheckTokenGuard";
 
 // Helper function to check auth status
 const isAuthenticated = () => {
@@ -22,6 +23,7 @@ function App() {
   return (
     <div className="App">
       <Routes>
+        {/* <CheckTokenGuard /> */}
         <Route path="/" element={<Home />} />
         <Route
           path="/login"

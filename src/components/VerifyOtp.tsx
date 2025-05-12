@@ -35,8 +35,8 @@ const VerifyOtp = () => {
       } else {
         setMessage("Verification failed");
       }
-    } catch (error: any) {
-      setMessage(error.response?.data?.message || "Verification failed");
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : "Verification failed");
     } finally {
       setLoading(false);
     }
@@ -50,8 +50,8 @@ const VerifyOtp = () => {
       if (response.data) {
         setMessage("OTP resent successfully!");
       }
-    } catch (error: any) {
-      setMessage(error.response?.data?.message || "Failed to resend OTP");
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : "Failed to resend OTP");
     }
     setResendLoading(false);
   };

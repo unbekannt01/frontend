@@ -1,3 +1,7 @@
+"use client";
+
+import type React from "react";
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
@@ -53,7 +57,7 @@ const Register = () => {
       }
 
       // Validate file type
-      const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+      const validTypes = ["image/jpeg", "image/png", "image/gif"];
       if (!validTypes.includes(selectedFile.type)) {
         setMessage("Please upload a valid image file (JPG, PNG, or GIF)");
         return;
@@ -79,12 +83,16 @@ const Register = () => {
       // Append file if it exists
       if (file) {
         formDataToSend.append("avatar", file);
+        console.log("Appending file:", file.name, file.type, file.size); // Debug log
       }
 
       // Append all other form fields
       Object.entries(formData).forEach(([key, value]) => {
         formDataToSend.append(key, value);
+        console.log(`Appending form field: ${key}=${value}`); // Debug log
       });
+
+      console.log("Sending registration request with FormData"); // Debug log
 
       const response = await api.post("/auth/register", formDataToSend, {
         headers: {
@@ -93,7 +101,9 @@ const Register = () => {
       });
 
       if (response.status >= 200 && response.status < 300) {
-        setMessage("User registered successfully! A verification link has been sent to your email.");
+        setMessage(
+          "User registered successfully! A verification link has been sent to your email."
+        );
         setTimeout(() => {
           navigate("/login");
         }, 2000);
@@ -104,7 +114,9 @@ const Register = () => {
       console.error("Error registering user:", error);
       if (error instanceof AxiosError && error.response?.data) {
         const errorData = error.response.data as ApiErrorResponse;
-        setMessage(errorData.message || "Registration failed. Please try again.");
+        setMessage(
+          errorData.message || "Registration failed. Please try again."
+        );
       } else {
         setMessage("Server error occurred. Please try again.");
       }
@@ -127,7 +139,7 @@ const Register = () => {
     e.preventDefault();
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files?.[0];
-    
+
     if (droppedFile) {
       // Validate file size (5MB limit)
       if (droppedFile.size > 5 * 1024 * 1024) {
@@ -136,7 +148,7 @@ const Register = () => {
       }
 
       // Validate file type
-      if (!droppedFile.type.startsWith('image/')) {
+      if (!droppedFile.type.startsWith("image/")) {
         setMessage("Please upload a valid image file (JPG, PNG, or GIF)");
         return;
       }
@@ -224,7 +236,7 @@ const Register = () => {
               id="file-upload"
               onChange={handleFileChange}
               accept="image/*"
-              style={{ display: 'none' }}
+              style={{ display: "none" }}
             />
             <label htmlFor="file-upload">
               {preview ? (
@@ -235,7 +247,9 @@ const Register = () => {
                   <UploadText>
                     Drag and drop your profile picture here, or click to select
                   </UploadText>
-                  <UploadHint>Supported formats: JPG, PNG, GIF (Max size: 5MB)</UploadHint>
+                  <UploadHint>
+                    Supported formats: JPG, PNG, GIF (Max size: 5MB)
+                  </UploadHint>
                 </UploadPlaceholder>
               )}
             </label>
@@ -250,8 +264,6 @@ const Register = () => {
               Log In
             </Button>
           </LoginSwitch>
-
-
         </form>
         {message && (
           <Message success={message.includes("successful")}>{message}</Message>
@@ -393,18 +405,20 @@ const UploadHint = styled.p`
 `;
 
 const FileUploadContainer = styled.div<{ isDragging: boolean }>`
-  border: 2px dashed ${props => props.isDragging ? '#667eea' : '#eef2ff'};
+  border: 2px dashed ${(props) => (props.isDragging ? "#667eea" : "#eef2ff")};
   border-radius: 8px;
   padding: 2rem;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
   margin-bottom: 1rem;
-  background: ${props => props.isDragging ? 'rgba(102, 126, 234, 0.1)' : 'transparent'};
+  background: ${(props) =>
+    props.isDragging ? "rgba(102, 126, 234, 0.1)" : "transparent"};
 
   &:hover {
     border-color: #667eea;
     background: rgba(102, 126, 234, 0.05);
-  }`;
+  }
+`;
 
 export default Register;

@@ -1,15 +1,19 @@
+"use client"
+
+import type React from "react"
+
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import styled from "styled-components";
-import api from "../api";
-import { AxiosError } from "axios";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react"
+import { useNavigate, useLocation } from "react-router-dom"
+import styled from "styled-components"
+import api from "../api"
+import type { AxiosError } from "axios"
+import { Link } from "react-router-dom"
 
 interface LoginFormData {
-  identifier: string;
-  password: string;
+  identifier: string
+  password: string
 }
 
 declare global {
@@ -17,44 +21,51 @@ declare global {
     google?: {
       accounts: {
         id: {
-          initialize: (config: any) => void;
-          renderButton: (element: HTMLElement, config: any) => void;
-          prompt: () => void;
-        };
-      };
-    };
+          initialize: (config: any) => void
+          renderButton: (element: HTMLElement, config: any) => void
+          prompt: () => void
+        }
+      }
+    }
   }
 }
 
 const Login = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate = useNavigate()
+  const location = useLocation()
   const [loginFormData, setLoginFormData] = useState<LoginFormData>({
     identifier: location.state?.email || "",
     password: "",
-  });
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(location.state?.message || "");
+  })
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState(location.state?.message || "")
 
-  // Clear location state after using it
+  // Add support for displaying session expiry message
   useEffect(() => {
-    if (location.state) {
-      window.history.replaceState({}, document.title);
+    // Check URL parameters for session expiry
+    const queryParams = new URLSearchParams(location.search)
+    if (queryParams.get("session") === "expired") {
+      setMessage("Your session has expired because you logged in on another device.")
     }
-  }, [location.state]);
+
+    // Clear location state after using it
+    if (location.state) {
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state, location.search])
 
   useEffect(() => {
     const initializeGoogleSignIn = () => {
       if (window.google) {
-        console.log("Google script loaded");
+        console.log("Google script loaded")
         window.google.accounts.id.initialize({
           client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
           callback: handleGoogleLogin,
-        });
+        })
 
-        const googleButtonElement = document.getElementById("googleButton");
+        const googleButtonElement = document.getElementById("googleButton")
         if (googleButtonElement) {
-          console.log("Google button element found");
+          console.log("Google button element found")
           window.google.accounts.id.renderButton(googleButtonElement, {
             type: "standard",
             theme: "outline",
@@ -62,94 +73,94 @@ const Login = () => {
             width: "100%",
             text: "signin_with",
             shape: "rectangular",
-          });
+          })
         } else {
-          console.log("Google button element not found");
+          console.log("Google button element not found")
         }
       } else {
-        console.log("Google script not loaded");
+        console.log("Google script not loaded")
       }
-    };
+    }
 
     // Check if Google script is already loaded
     if (window.google) {
-      initializeGoogleSignIn();
+      initializeGoogleSignIn()
     } else {
       // Wait for Google script to load
       const checkGoogleScript = setInterval(() => {
         if (window.google) {
-          console.log("Google script loaded after waiting");
-          clearInterval(checkGoogleScript);
-          initializeGoogleSignIn();
+          console.log("Google script loaded after waiting")
+          clearInterval(checkGoogleScript)
+          initializeGoogleSignIn()
         }
-      }, 100);
+      }, 100)
 
       // Clear interval after 5 seconds if Google script doesn't load
       setTimeout(() => {
-        clearInterval(checkGoogleScript);
-        console.log("Google script loading timeout");
-      }, 5000);
+        clearInterval(checkGoogleScript)
+        console.log("Google script loading timeout")
+      }, 5000)
     }
-  }, []);
+  }, [])
 
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLoginFormData({
       ...loginFormData,
       [e.target.name]: e.target.value,
-    });
-  };
+    })
+  }
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage("");
+    e.preventDefault()
+    setLoading(true)
+    setMessage("")
 
     try {
-      const response = await api.post("/auth/login", loginFormData);
-      const data = response.data;
+      const response = await api.post("/auth/login", loginFormData)
+      const data = response.data
 
       if (data?.refresh_token) {
-        localStorage.setItem("refresh_token", data.refresh_token);
-        localStorage.setItem("userEmail", loginFormData.identifier);
-        document.cookie = `access_token=${data.access_token}; path=/; secure; samesite=lax`;
-        navigate("/dashboard");
+        localStorage.setItem("refresh_token", data.refresh_token)
+        localStorage.setItem("userEmail", loginFormData.identifier)
+        document.cookie = `access_token=${data.access_token}; path=/; secure; samesite=lax`
+        navigate("/dashboard")
       } else {
-        setMessage("Login failed");
+        setMessage("Login failed")
       }
     } catch (error: unknown) {
-      const err = error as AxiosError<{ message: string }>;
-      setMessage(err.response?.data?.message || "Server error occurred");
+      const err = error as AxiosError<{ message: string }>
+      setMessage(err.response?.data?.message || "Server error occurred")
     }
-    setLoading(false);
-  };
+    setLoading(false)
+  }
 
   const handleResendRedirect = () => {
-    navigate("/email-verification");
-  };
+    navigate("/email-verification")
+  }
 
   const handleGoogleLogin = async (response: any) => {
     try {
-      setLoading(true);
-      setMessage("");
+      setLoading(true)
+      setMessage("")
 
       const result = await api.post("/google/google-login", {
         credential: response.credential,
-      });
+      })
 
       if (result.data?.refresh_token) {
-        localStorage.setItem("refresh_token", result.data.refresh_token);
-        document.cookie = `access_token=${result.data.access_token}; path=/; secure; samesite=lax`;
-        navigate("/dashboard");
+        localStorage.setItem("refresh_token", result.data.refresh_token)
+        document.cookie = `access_token=${result.data.access_token}; path=/; secure; samesite=lax`
+        navigate("/dashboard")
       } else {
-        setMessage("Google login failed");
+        setMessage("Google login failed")
       }
     } catch (error) {
-      const err = error as AxiosError<{ message: string }>;
-      setMessage(err.response?.data?.message || "Google login failed");
+      const err = error as AxiosError<{ message: string }>
+      setMessage(err.response?.data?.message || "Google login failed")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <StyledContainer>
@@ -188,9 +199,7 @@ const Login = () => {
         {message && <Message success={false}>{message}</Message>}
         <ResendSection>
           <h3>Missed the verification email?</h3>
-          <Button onClick={handleResendRedirect}>
-            Resend Verification Email
-          </Button>
+          <Button onClick={handleResendRedirect}>Resend Verification Email</Button>
         </ResendSection>
         <RegisterSwitch>
           <p>Don't have an account?</p>
@@ -205,8 +214,8 @@ const Login = () => {
         </ForgotSwitch> */}
       </FormCard>
     </StyledContainer>
-  );
-};
+  )
+}
 
 const StyledContainer = styled.div`
   min-height: 100vh;
@@ -215,7 +224,7 @@ const StyledContainer = styled.div`
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 20px;
-`;
+`
 
 const FormCard = styled.div`
   background: white;
@@ -247,7 +256,7 @@ const FormCard = styled.div`
       }
     }
   }
-`;
+`
 
 const Input = styled.input`
   width: 100%;
@@ -263,7 +272,7 @@ const Input = styled.input`
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
   }
-`;
+`
 
 const Button = styled.button`
   width: 100%;
@@ -285,14 +294,14 @@ const Button = styled.button`
     opacity: 0.7;
     cursor: not-allowed;
   }
-`;
+`
 
 const Message = styled.p<{ success: boolean }>`
   text-align: center;
   margin-top: 1rem;
   color: ${(props) => (props.success ? "#10B981" : "#EF4444")};
   font-size: 0.9rem;
-`;
+`
 
 const ResendSection = styled.div`
   margin-top: 2rem;
@@ -305,7 +314,7 @@ const ResendSection = styled.div`
     font-size: 1.2rem;
     margin-bottom: 1rem;
   }
-`;
+`
 
 const Divider = styled.div`
   display: flex;
@@ -325,7 +334,7 @@ const Divider = styled.div`
     color: #666;
     font-size: 0.9rem;
   }
-`;
+`
 
 const RegisterSwitch = styled.div`
   margin-top: 1rem;
@@ -335,7 +344,7 @@ const RegisterSwitch = styled.div`
     margin-bottom: 0.5rem;
     color: #666;
   }
-`;
+`
 
 // const ForgotSwitch = styled.div`
 //   margin-top: 1rem;
@@ -347,5 +356,4 @@ const RegisterSwitch = styled.div`
 //   }
 // `;
 
-
-export default Login;
+export default Login
