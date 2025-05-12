@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import api from "../api";
+import { AxiosError } from "axios";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -43,44 +44,49 @@ const ResetPassword = () => {
     try {
       // First check if user is suspended
       const userResponse = await api.get(`/user/check-status/${email}`);
-      
+
       if (userResponse.data.status === "SUSPENDED") {
-        setMessage("This account has been suspended. Please contact admin support.");
+        setMessage(
+          "This account has been suspended. Please contact admin support."
+        );
         setLoading(false);
         return;
       }
 
-      console.log("Sending reset request with:", { email, newpwd: formData.password });
+      console.log("Sending reset request with:", {
+        email,
+        newpwd: formData.password,
+      });
       const response = await api.post("/auth/resetpwd", {
         email,
-        newpwd: formData.password
+        newpwd: formData.password,
       });
 
       console.log("Reset response:", response.data);
-      
+
       if (response.data?.message) {
         localStorage.removeItem("resetEmail");
         localStorage.removeItem("refresh_token");
-        document.cookie = "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        
+        document.cookie =
+          "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
         setMessage("Password reset successful! Redirecting to login...");
         setTimeout(() => {
-          navigate("/login", { 
-            state: { 
-              message: "Password has been reset successfully. Please login with your new password.",
-              email: email
-            } 
+          navigate("/login", {
+            state: {
+              message:
+                "Password has been reset successfully. Please login with your new password.",
+              email: email,
+            },
           });
         }, 2000);
       } else {
         setMessage("Failed to reset password. Please try again.");
       }
-    } catch (error: any) {
-      console.error("Reset password error:", error.response?.data);
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          "Failed to reset password. Please try again.";
-      setMessage(errorMessage);
+    } catch (error) {
+      const err = error as AxiosError<{ message: string }>;
+      setMessage(err.response?.data?.message || "Failed to update profile");
+      console.error("Error updating profile:", error);
     } finally {
       setLoading(false);
     }
@@ -193,4 +199,4 @@ const Message = styled.div`
   font-size: 0.9rem;
 `;
 
-export default ResetPassword; 
+export default ResetPassword;

@@ -121,7 +121,6 @@ const Login = () => {
 
       if (data?.refresh_token) {
         localStorage.setItem("refresh_token", data.refresh_token)
-        localStorage.setItem("userEmail", loginFormData.identifier)
         document.cookie = `access_token=${data.access_token}; path=/; secure; samesite=lax`
         navigate("/dashboard")
       } else {
